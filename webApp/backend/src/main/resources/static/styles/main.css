@@ -1,0 +1,347 @@
+/* Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #0a0a0a;
+    color: #fff;
+}
+
+/* App Layout */
+.app {
+    display: flex;
+    min-height: 100vh;
+    background-color: #0a0a0a;
+}
+
+.main-content {
+    margin-left: 250px;
+    flex: 1;
+    min-height: 100vh;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 250px;
+    height: 100vh;
+    background-color: #0a0a0a;
+    border-right: 1px solid #333;
+    padding: 40px 0;
+    z-index: 100;
+}
+
+.sidebar-content {
+    padding: 0 30px;
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-menu li {
+    font-size: 18px;
+    color: #888;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.nav-menu li:hover {
+    color: #fff;
+}
+
+.nav-menu li.active {
+    color: #fff;
+    font-weight: 500;
+}
+
+/* Main Page Styles */
+.main-page {
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* Artwork Page Styles */
+.artwork-container {
+    width: 100%;
+    padding: 60px 80px;
+}
+
+.artwork-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 80px;
+    max-width: 1200px;
+}
+
+.artwork-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.artwork-image-placeholder {
+    width: 100%;
+    aspect-ratio: 16/10;
+    background-color: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #333;
+}
+
+.artwork-image-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.placeholder-text {
+    color: #555;
+    font-size: 18px;
+}
+
+.artwork-info {
+    padding: 5px 0;
+}
+
+.artwork-title {
+    font-size: 20px;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.artwork-details {
+    font-size: 16px;
+    color: #888;
+    line-height: 1.6;
+}
+
+/* CV Page Styles */
+.cv-container {
+    width: 100%;
+    padding: 60px 80px;
+}
+
+.cv-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 80px;
+    max-width: 1200px;
+}
+
+.exhibition-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.exhibition-poster {
+    width: 100%;
+    aspect-ratio: 16/10;
+    background-color: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #333;
+}
+
+.exhibition-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.poster-placeholder {
+    color: #555;
+    font-size: 18px;
+}
+
+.exhibition-info {
+    padding: 5px 0;
+}
+
+.exhibition-title {
+    font-size: 20px;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.exhibition-title-ko {
+    font-size: 18px;
+    font-weight: 300;
+    color: #ccc;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.exhibition-year {
+    font-size: 16px;
+    color: #888;
+    margin-bottom: 5px;
+}
+
+.exhibition-location {
+    font-size: 16px;
+    color: #888;
+    margin-bottom: 5px;
+}
+
+.exhibition-organizer {
+    font-size: 16px;
+    color: #888;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.9);
+}
+
+.modal-content {
+    background-color: #1a1a1a;
+    margin: 2% auto;
+    padding: 2rem;
+    border: 1px solid #333;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 1000px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #fff;
+}
+
+.modal-content p {
+    color: #888;
+    margin-bottom: 1.5rem;
+}
+
+.modal-content .description {
+    color: #ccc;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.close-modal {
+    color: #fff;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: #888;
+}
+
+.detail-images {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.detail-images img {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .artwork-container,
+    .cv-container {
+        padding: 40px 50px;
+    }
+
+    .artwork-item,
+    .exhibition-item {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .app {
+        flex-direction: column;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 20px 0;
+    }
+
+    .sidebar-content {
+        padding: 0 20px;
+    }
+
+    .nav-menu {
+        display: flex;
+        gap: 30px;
+    }
+
+    .nav-menu li {
+        margin-bottom: 0;
+    }
+
+    .artwork-container,
+    .cv-container {
+        padding: 30px 20px;
+    }
+
+    .artwork-grid,
+    .cv-grid {
+        gap: 50px;
+    }
+
+    .artwork-title,
+    .exhibition-title {
+        font-size: 18px;
+    }
+
+    .artwork-details,
+    .exhibition-year,
+    .exhibition-location,
+    .exhibition-organizer {
+        font-size: 14px;
+    }
+}
