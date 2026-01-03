@@ -158,23 +158,78 @@ function showPostDetail(id, posts) {
     if (!post) return;
 
     const modal = createModal();
-    modal.innerHTML = `
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h2>〈${post.title}〉</h2>
-            <p>${post.year}, ${post.medium}, ${post.size}</p>
-            ${post.description ? `<p class="description">${post.description}</p>` : ''}
-            <div class="detail-images">
-                ${post.images && post.images.length > 0
-                    ? post.images.map(img => `<img src="${API_BASE_URL}/files/${img}" alt="${post.title}">`).join('')
-                    : '<p>추가 이미지가 없습니다.</p>'
-                }
-            </div>
-        </div>
-    `;
+    let contentHtml = '';
 
+    // 콘텐츠 타입별 렌더링
+    if (post.contentType === 'PHOTO') {
+        contentHtml = `
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>〈${post.title}〉</h2>
+                <p>${post.year}, ${post.medium}, ${post.size}</p>
+                ${post.description ? `<p class="description">${escapeHtml(post.description)}</p>` : ''}
+                <div class="detail-images">
+                    ${post.images && post.images.length > 0
+                        ? post.images.map(img => `<img src="${API_BASE_URL}/files/${img}" alt="${post.title}">`).join('')
+                        : '<p>추가 이미지가 없습니다.</p>'
+                    }
+                </div>
+            </div>
+        `;
+    } else if (post.contentType === 'ARTICLE') {
+        // Quill Delta JSON을 HTML로 변환
+        let articleContent = '';
+        if (post.description) {
+            try {
+                // Quill Delta를 HTML로 변환하기 위해 임시 Quill 인스턴스 사용
+                const tempDiv = document.createElement('div');
+                tempDiv.style.display = 'none';
+                document.body.appendChild(tempDiv);
+
+                const tempQuill = new Quill(tempDiv, { readOnly: true });
+                const delta = JSON.parse(post.description);
+                tempQuill.setContents(delta);
+                articleContent = tempQuill.root.innerHTML;
+
+                document.body.removeChild(tempDiv);
+            } catch (e) {
+                console.error('Quill 데이터 파싱 실패:', e);
+                articleContent = `<p>${escapeHtml(post.description)}</p>`;
+            }
+        }
+
+        contentHtml = `
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                ${post.thumbnail ? `<img src="${API_BASE_URL}/files/${post.thumbnail}" alt="${post.title}" style="max-width: 100%; margin-bottom: 1rem;">` : ''}
+                <h2>〈${post.title}〉</h2>
+                <p>${post.year}, ${post.medium}, ${post.size}</p>
+                <div class="article-content">
+                    ${articleContent}
+                </div>
+            </div>
+        `;
+    } else if (post.contentType === 'HTML') {
+        contentHtml = `
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <div class="html-content">
+                    ${post.htmlContent || '<p>콘텐츠가 없습니다.</p>'}
+                </div>
+            </div>
+        `;
+    }
+
+    modal.innerHTML = contentHtml;
     document.body.appendChild(modal);
     setupModalClose(modal);
+}
+
+// HTML 이스케이프 함수
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // 모달 생성

@@ -414,16 +414,37 @@ body {
     font-size: 0.75rem;
     border-radius: 4px;
     font-weight: 500;
+    color: white;
 }
 
-.badge-default {
-    background-color: #e3f2fd;
-    color: #1976d2;
+.badge-photo {
+    background-color: #3498db;
 }
 
-.badge-custom {
-    background-color: #f3e5f5;
-    color: #7b1fa2;
+.badge-article {
+    background-color: #2ecc71;
+}
+
+.badge-html {
+    background-color: #e74c3c;
+}
+
+/* Quill 에디터 스타일 */
+#quill-editor {
+    background-color: white;
+    min-height: 300px;
+}
+
+.ql-editor {
+    min-height: 250px;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.ql-toolbar {
+    background-color: #f8f9fa;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
 }
 
 /* 빈 상태 */

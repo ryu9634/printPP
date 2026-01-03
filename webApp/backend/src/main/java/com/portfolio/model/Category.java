@@ -1,6 +1,6 @@
 package com.portfolio.model;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +19,10 @@ public class Category {
     private String name;
 
     @Column(nullable = false)
-    private String type; // "default" or "custom"
+    private String type; // "PHOTO", "ARTICLE", "HTML"
+
+    @Column(name = "is_deletable", nullable = false)
+    private Boolean isDeletable = true;
 
     @Column(name = "created_at")
     private Long createdAt;
@@ -27,5 +30,8 @@ public class Category {
     @PrePersist
     protected void onCreate() {
         createdAt = System.currentTimeMillis();
+        if (isDeletable == null) {
+            isDeletable = true;
+        }
     }
 }

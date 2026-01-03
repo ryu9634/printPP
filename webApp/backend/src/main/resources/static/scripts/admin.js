@@ -5,7 +5,8 @@ const API_BASE_URL = 'http://localhost:8080/api';
 const adminState = {
     categories: [],
     currentCategory: '',
-    editingPost: null
+    editingPost: null,
+    quillEditor: null
 };
 
 // 초기화
@@ -14,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
     renderCategoriesTable();
     setupThumbnailUpload();
+    initializeQuillEditor();
 });
 
 // 카테고리 로드
@@ -71,15 +73,31 @@ function renderCategoriesTable() {
 
     adminState.categories.forEach(category => {
         const tr = document.createElement('tr');
+
+        // 타입 배지 클래스 결정
+        let badgeClass = '';
+        let badgeText = '';
+        if (category.type === 'PHOTO') {
+            badgeClass = 'badge-photo';
+            badgeText = 'PHOTO';
+        } else if (category.type === 'ARTICLE') {
+            badgeClass = 'badge-article';
+            badgeText = 'ARTICLE';
+        } else if (category.type === 'HTML') {
+            badgeClass = 'badge-html';
+            badgeText = 'HTML';
+        }
+
         tr.innerHTML = `
             <td>${category.id}</td>
             <td>${category.name}</td>
-            <td><span class="badge ${category.type === 'default' ? 'badge-default' : 'badge-custom'}">${category.type === 'default' ? '기본' : '커스텀'}</span></td>
+            <td><span class="badge ${badgeClass}">${badgeText}</span></td>
             <td>
                 <div class="table-actions">
-                    ${category.type !== 'default'
+                    <button class="btn btn-secondary btn-sm" onclick="editCategory('${category.id}')">수정</button>
+                    ${category.isDeletable
                         ? `<button class="btn btn-danger btn-sm" onclick="deleteCategory('${category.id}')">삭제</button>`
-                        : '<span style="color: #999;">기본 카테고리</span>'
+                        : '<span style="color: #999; margin-left: 0.5rem;">삭제 불가</span>'
                     }
                 </div>
             </td>
@@ -176,44 +194,79 @@ function closeModal(modalId) {
 
     if (modalId === 'category-modal') {
         document.getElementById('category-form').reset();
+        document.getElementById('category-edit-id').value = '';
     } else if (modalId === 'post-modal') {
         document.getElementById('post-form').reset();
         document.getElementById('additional-images').innerHTML = '';
+
+        // Quill 에디터 초기화
+        if (adminState.quillEditor) {
+            adminState.quillEditor.setText('');
+        }
+
         adminState.editingPost = null;
     }
 }
 
 // 카테고리 추가 모달 표시
 function showAddCategoryModal() {
+    document.getElementById('category-modal-title').textContent = '새 카테고리 추가';
+    document.getElementById('category-form').reset();
+    document.getElementById('category-edit-id').value = '';
+    document.getElementById('category-id').disabled = false;
     showModal('category-modal');
 }
 
-// 카테고리 추가 처리
-async function handleAddCategory(event) {
+// 카테고리 수정 모달 표시
+function editCategory(categoryId) {
+    const category = adminState.categories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    document.getElementById('category-modal-title').textContent = '카테고리 수정';
+    document.getElementById('category-edit-id').value = category.id;
+    document.getElementById('category-id').value = category.id;
+    document.getElementById('category-id').disabled = true;
+    document.getElementById('category-name').value = category.name;
+    document.getElementById('category-type').value = category.type;
+
+    showModal('category-modal');
+}
+
+// 카테고리 저장 처리 (추가/수정)
+async function handleSaveCategory(event) {
     event.preventDefault();
+
+    const editId = document.getElementById('category-edit-id').value;
+    const isEdit = !!editId;
 
     const id = document.getElementById('category-id').value.toLowerCase().trim();
     const name = document.getElementById('category-name').value.trim();
+    const type = document.getElementById('category-type').value;
+
+    const categoryData = { id, name, type, isDeletable: true };
 
     try {
-        const response = await fetch(`${API_BASE_URL}/categories`, {
-            method: 'POST',
+        const url = isEdit ? `${API_BASE_URL}/categories/${editId}` : `${API_BASE_URL}/categories`;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, name, type: 'custom' })
+            body: JSON.stringify(categoryData)
         });
 
         if (response.ok) {
             await loadCategories();
             closeModal('category-modal');
-            alert('카테고리가 추가되었습니다!');
+            alert(isEdit ? '카테고리가 수정되었습니다!' : '카테고리가 추가되었습니다!');
         } else {
             const errorText = await response.text();
-            console.error('카테고리 추가 실패:', errorText);
-            alert(`카테고리 추가 실패: ${response.status} ${response.statusText}`);
+            console.error('카테고리 저장 실패:', errorText);
+            alert(`카테고리 저장 실패: ${response.status} ${response.statusText}`);
         }
     } catch (error) {
-        console.error('카테고리 추가 실패:', error);
-        alert('카테고리 추가 중 오류가 발생했습니다: ' + error.message);
+        console.error('카테고리 저장 실패:', error);
+        alert('카테고리 저장 중 오류가 발생했습니다: ' + error.message);
     }
 }
 
@@ -238,18 +291,61 @@ async function deleteCategory(categoryId) {
     }
 }
 
+// Quill 에디터 초기화
+function initializeQuillEditor() {
+    adminState.quillEditor = new Quill('#quill-editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link', 'image']
+            ]
+        }
+    });
+}
+
+// 콘텐츠 타입 변경 처리
+function handleContentTypeChange() {
+    const contentType = document.getElementById('post-content-type').value;
+
+    // 모든 콘텐츠 그룹 숨기기
+    document.getElementById('thumbnail-group').style.display = 'none';
+    document.getElementById('photo-description-group').style.display = 'none';
+    document.getElementById('article-editor-group').style.display = 'none';
+    document.getElementById('html-editor-group').style.display = 'none';
+    document.getElementById('additional-images-group').style.display = 'none';
+
+    // 선택된 타입에 따라 표시
+    if (contentType === 'PHOTO') {
+        document.getElementById('thumbnail-group').style.display = 'block';
+        document.getElementById('photo-description-group').style.display = 'block';
+        document.getElementById('additional-images-group').style.display = 'block';
+    } else if (contentType === 'ARTICLE') {
+        document.getElementById('thumbnail-group').style.display = 'block';
+        document.getElementById('article-editor-group').style.display = 'block';
+    } else if (contentType === 'HTML') {
+        document.getElementById('html-editor-group').style.display = 'block';
+    }
+}
+
 // 게시글 추가 모달 표시
 function showAddPostModal() {
-    if (!adminState.currentCategory) {
-        alert('먼저 카테고리를 선택해주세요.');
-        return;
-    }
-
     document.getElementById('post-modal-title').textContent = '새 게시글 추가';
     document.getElementById('post-form').reset();
     document.getElementById('post-id').value = '';
-    document.getElementById('post-category').value = adminState.currentCategory;
+    document.getElementById('post-content-type').value = '';
     document.getElementById('additional-images').innerHTML = '';
+
+    // Quill 에디터 초기화
+    if (adminState.quillEditor) {
+        adminState.quillEditor.setText('');
+    }
+
+    // 모든 콘텐츠 그룹 숨기기
+    handleContentTypeChange();
+
     showModal('post-modal');
 }
 
@@ -263,17 +359,37 @@ async function editPost(postId) {
         document.getElementById('post-modal-title').textContent = '게시글 수정';
         document.getElementById('post-id').value = postId;
         document.getElementById('post-category').value = post.categoryId;
+        document.getElementById('post-content-type').value = post.contentType;
         document.getElementById('post-title').value = post.title;
         document.getElementById('post-year').value = post.year;
         document.getElementById('post-medium').value = post.medium;
         document.getElementById('post-size').value = post.size;
         document.getElementById('post-thumbnail').value = post.thumbnail || '';
-        document.getElementById('post-description').value = post.description || '';
 
-        const additionalImages = document.getElementById('additional-images');
-        additionalImages.innerHTML = '';
-        if (post.images && post.images.length > 0) {
-            post.images.forEach(img => addImageInput(img));
+        // 콘텐츠 타입별 데이터 로드
+        handleContentTypeChange();
+
+        if (post.contentType === 'PHOTO') {
+            document.getElementById('post-description-text').value = post.description || '';
+
+            const additionalImages = document.getElementById('additional-images');
+            additionalImages.innerHTML = '';
+            if (post.images && post.images.length > 0) {
+                post.images.forEach(img => addImageInput(img));
+            }
+        } else if (post.contentType === 'ARTICLE') {
+            // Quill 에디터에 데이터 로드
+            if (post.description) {
+                try {
+                    const delta = JSON.parse(post.description);
+                    adminState.quillEditor.setContents(delta);
+                } catch (e) {
+                    console.error('Quill 데이터 파싱 실패:', e);
+                    adminState.quillEditor.setText(post.description || '');
+                }
+            }
+        } else if (post.contentType === 'HTML') {
+            document.getElementById('post-html-content').value = post.htmlContent || '';
         }
 
         showModal('post-modal');
@@ -395,18 +511,32 @@ async function handleSavePost(event) {
     event.preventDefault();
 
     const postId = document.getElementById('post-id').value;
+    const contentType = document.getElementById('post-content-type').value;
+
     const postData = {
         categoryId: document.getElementById('post-category').value,
+        contentType: contentType,
         title: document.getElementById('post-title').value,
         year: document.getElementById('post-year').value,
         medium: document.getElementById('post-medium').value,
-        size: document.getElementById('post-size').value,
-        thumbnail: document.getElementById('post-thumbnail').value,
-        description: document.getElementById('post-description').value,
-        images: Array.from(document.querySelectorAll('.additional-image-url'))
-            .map(input => input.value)
-            .filter(url => url.trim() !== '')
+        size: document.getElementById('post-size').value
     };
+
+    // 콘텐츠 타입별 데이터 수집
+    if (contentType === 'PHOTO') {
+        postData.thumbnail = document.getElementById('post-thumbnail').value;
+        postData.description = document.getElementById('post-description-text').value;
+        postData.images = Array.from(document.querySelectorAll('.additional-image-url'))
+            .map(input => input.value)
+            .filter(url => url.trim() !== '');
+    } else if (contentType === 'ARTICLE') {
+        postData.thumbnail = document.getElementById('post-thumbnail').value;
+        // Quill 에디터의 Delta JSON 저장
+        const delta = adminState.quillEditor.getContents();
+        postData.description = JSON.stringify(delta);
+    } else if (contentType === 'HTML') {
+        postData.htmlContent = document.getElementById('post-html-content').value;
+    }
 
     try {
         const url = postId ? `${API_BASE_URL}/posts/${postId}` : `${API_BASE_URL}/posts`;
@@ -423,7 +553,9 @@ async function handleSavePost(event) {
             await renderPostsGrid();
             alert('게시글이 저장되었습니다!');
         } else {
-            alert('게시글 저장 실패');
+            const errorText = await response.text();
+            console.error('게시글 저장 실패:', errorText);
+            alert('게시글 저장 실패: ' + errorText);
         }
     } catch (error) {
         console.error('게시글 저장 실패:', error);

@@ -3,7 +3,7 @@ package com.portfolio.controller;
 import com.portfolio.dto.PostRequest;
 import com.portfolio.model.Post;
 import com.portfolio.service.PostService;
-import jakarta.validation.Valid;
+import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

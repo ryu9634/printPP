@@ -1,6 +1,6 @@
 package com.portfolio.model;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +23,9 @@ public class Post {
     private String categoryId;
 
     @Column(nullable = false)
+    private String contentType; // "PHOTO", "ARTICLE", "HTML"
+
+    @Column(nullable = false)
     private String title;
 
     @Column(name = "post_year", nullable = false)
@@ -36,8 +39,11 @@ public class Post {
 
     private String thumbnail;
 
-    @Column(length = 2000)
-    private String description;
+    @Column(length = 10000)
+    private String description; // ARTICLE일 때 Quill JSON 저장
+
+    @Column(length = 10000, name = "html_content")
+    private String htmlContent; // HTML 타입일 때 사용
 
     @ElementCollection
     @CollectionTable(name = "post_images", joinColumns = @JoinColumn(name = "post_id"))

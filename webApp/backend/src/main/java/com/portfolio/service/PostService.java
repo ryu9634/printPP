@@ -32,12 +32,14 @@ public class PostService {
     public Post createPost(PostRequest request) {
         Post post = new Post();
         post.setCategoryId(request.getCategoryId());
+        post.setContentType(request.getContentType());
         post.setTitle(request.getTitle());
         post.setYear(request.getYear());
         post.setMedium(request.getMedium());
         post.setSize(request.getSize());
         post.setThumbnail(request.getThumbnail());
         post.setDescription(request.getDescription());
+        post.setHtmlContent(request.getHtmlContent());
         post.setImages(request.getImages());
 
         return postRepository.save(post);
@@ -48,12 +50,14 @@ public class PostService {
         Post post = getPostById(id);
 
         post.setCategoryId(request.getCategoryId());
+        post.setContentType(request.getContentType());
         post.setTitle(request.getTitle());
         post.setYear(request.getYear());
         post.setMedium(request.getMedium());
         post.setSize(request.getSize());
         post.setThumbnail(request.getThumbnail());
         post.setDescription(request.getDescription());
+        post.setHtmlContent(request.getHtmlContent());
         post.setImages(request.getImages());
 
         return postRepository.save(post);

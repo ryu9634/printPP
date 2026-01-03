@@ -37,6 +37,18 @@ public class CategoryService {
         category.setId(request.getId());
         category.setName(request.getName());
         category.setType(request.getType());
+        category.setIsDeletable(request.getIsDeletable());
+
+        return categoryRepository.save(category);
+    }
+
+    @Transactional
+    public Category updateCategory(String id, CategoryRequest request) {
+        Category category = getCategoryById(id);
+
+        category.setName(request.getName());
+        category.setType(request.getType());
+        // isDeletable은 보안상 기존 값 유지
 
         return categoryRepository.save(category);
     }
@@ -45,9 +57,9 @@ public class CategoryService {
     public void deleteCategory(String id) {
         Category category = getCategoryById(id);
 
-        // 기본 카테고리는 삭제 불가
-        if ("default".equals(category.getType())) {
-            throw new RuntimeException("기본 카테고리는 삭제할 수 없습니다");
+        // isDeletable이 false인 카테고리는 삭제 불가
+        if (!category.getIsDeletable()) {
+            throw new RuntimeException("이 카테고리는 삭제할 수 없습니다");
         }
 
         // 해당 카테고리의 모든 게시글 삭제
@@ -58,6 +70,6 @@ public class CategoryService {
     }
 
     public List<Category> getCustomCategories() {
-        return categoryRepository.findByType("custom");
+        return categoryRepository.findByIsDeletable(true);
     }
 }

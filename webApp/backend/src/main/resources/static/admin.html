@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 페이지 - Portfolio Admin</title>
     <link rel="stylesheet" href="styles/admin.css">
+
+    <!-- Quill.js CDN -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 </head>
 <body>
     <div class="admin-app">
@@ -71,27 +75,41 @@
         </div>
     </div>
 
-    <!-- 카테고리 추가 모달 -->
+    <!-- 카테고리 추가/수정 모달 -->
     <div id="category-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>새 카테고리 추가</h3>
+                <h3 id="category-modal-title">새 카테고리 추가</h3>
                 <span class="close" onclick="closeModal('category-modal')">&times;</span>
             </div>
-            <form id="category-form" onsubmit="handleAddCategory(event)">
+            <form id="category-form" onsubmit="handleSaveCategory(event)">
+                <input type="hidden" id="category-edit-id">
+
                 <div class="form-group">
                     <label for="category-id">카테고리 ID (영문, 소문자)</label>
                     <input type="text" id="category-id" required pattern="[a-z0-9-]+"
                            placeholder="예: new-category">
                 </div>
+
                 <div class="form-group">
                     <label for="category-name">카테고리 이름</label>
                     <input type="text" id="category-name" required
                            placeholder="예: New Category">
                 </div>
+
+                <div class="form-group">
+                    <label for="category-type">카테고리 타입</label>
+                    <select id="category-type" required>
+                        <option value="PHOTO">PHOTO - 사진/이미지 중심</option>
+                        <option value="ARTICLE">ARTICLE - 텍스트 기사</option>
+                        <option value="HTML">HTML - 커스텀 HTML</option>
+                    </select>
+                    <small>카테고리의 기본 콘텐츠 형식 (게시물마다 변경 가능)</small>
+                </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('category-modal')">취소</button>
-                    <button type="submit" class="btn btn-primary">추가</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
                 </div>
             </form>
         </div>
@@ -106,12 +124,21 @@
             </div>
             <form id="post-form" onsubmit="handleSavePost(event)">
                 <input type="hidden" id="post-id">
-                <input type="hidden" id="post-category-id">
 
                 <div class="form-group">
                     <label for="post-category">카테고리</label>
                     <select id="post-category" required>
                         <option value="">선택하세요</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="post-content-type">콘텐츠 타입</label>
+                    <select id="post-content-type" required onchange="handleContentTypeChange()">
+                        <option value="">선택하세요</option>
+                        <option value="PHOTO">PHOTO - 이미지 갤러리</option>
+                        <option value="ARTICLE">ARTICLE - 텍스트 기사</option>
+                        <option value="HTML">HTML - 커스텀 HTML</option>
                     </select>
                 </div>
 
@@ -135,18 +162,35 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <!-- PHOTO/ARTICLE 타입에서 표시 -->
+                <div class="form-group" id="thumbnail-group" style="display: none;">
                     <label for="post-thumbnail">썸네일 이미지</label>
                     <input type="text" id="post-thumbnail" placeholder="파일명" readonly>
                     <small>아래 파일 선택 버튼을 사용하여 이미지를 업로드하세요</small>
                 </div>
 
-                <div class="form-group">
-                    <label for="post-description">설명</label>
-                    <textarea id="post-description" rows="4" placeholder="작품에 대한 설명..."></textarea>
+                <!-- PHOTO 타입에서만 표시 -->
+                <div class="form-group" id="photo-description-group" style="display: none;">
+                    <label for="post-description-text">설명</label>
+                    <textarea id="post-description-text" rows="4" placeholder="작품에 대한 설명..."></textarea>
                 </div>
 
-                <div class="form-group">
+                <!-- ARTICLE 타입에서만 표시 -->
+                <div class="form-group" id="article-editor-group" style="display: none;">
+                    <label>본문 (리치 에디터)</label>
+                    <div id="quill-editor" style="height: 300px;"></div>
+                </div>
+
+                <!-- HTML 타입에서만 표시 -->
+                <div class="form-group" id="html-editor-group" style="display: none;">
+                    <label for="post-html-content">HTML 코드</label>
+                    <textarea id="post-html-content" rows="15"
+                              placeholder="HTML 코드를 입력하세요..."
+                              style="font-family: monospace;"></textarea>
+                </div>
+
+                <!-- PHOTO 타입에서만 표시 -->
+                <div class="form-group" id="additional-images-group" style="display: none;">
                     <label>추가 이미지 URL</label>
                     <div id="additional-images">
                         <!-- 추가 이미지 입력 필드가 여기에 표시됩니다 -->
