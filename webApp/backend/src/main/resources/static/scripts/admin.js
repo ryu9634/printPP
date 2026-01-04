@@ -1,5 +1,5 @@
-// API Base URL
-const API_BASE_URL = 'http://localhost:8080/api';
+// API Base URL (상대 경로 사용 - 로컬/배포 환경 모두 호환)
+const API_BASE_URL = '/api';
 
 // 전역 상태
 const adminState = {
