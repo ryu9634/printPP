@@ -45,7 +45,7 @@ public class Post {
     @Column(length = 10000, name = "html_content")
     private String htmlContent; // HTML 타입일 때 사용
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "post_images", joinColumns = @JoinColumn(name = "post_id"))
     @Column(name = "image_url")
     private List<String> images = new ArrayList<>();
