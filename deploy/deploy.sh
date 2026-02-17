@@ -39,14 +39,14 @@ log_info "=== AWS EC2 배포 시작 ==="
 # 1. 사전 확인
 log_info "1. 환경 확인 중..."
 
-if [ ! -f "../webApp/backend/pom.xml" ]; then
+if [ ! -f "../pom.xml" ]; then
     log_error "pom.xml을 찾을 수 없습니다. 올바른 디렉토리에서 실행하세요."
     exit 1
 fi
 
 # 2. Maven 빌드
 log_info "2. Maven 빌드 시작..."
-cd ../webApp/backend
+cd ..
 
 if ! mvn clean package -DskipTests; then
     log_error "Maven 빌드 실패"
@@ -144,4 +144,4 @@ log_info "  애플리케이션: http://YOUR_EC2_IP:8080"
 log_info "  관리자 페이지: http://YOUR_EC2_IP:8080/admin"
 log_info ""
 
-cd ../../deploy
+cd deploy
