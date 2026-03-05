@@ -72,7 +72,8 @@ public class PostService {
                     .collect(Collectors.toSet());
 
             for (PostImage oldImage : post.getImages()) {
-                if (oldImage.getImageUrl() != null && !newImageUrls.contains(oldImage.getImageUrl())) {
+                if (oldImage.getImageUrl() != null && !newImageUrls.contains(oldImage.getImageUrl())
+                        && !"VIDEO".equals(oldImage.getMediaType())) {
                     fileStorageService.deleteFile(oldImage.getImageUrl());
                 }
             }
@@ -105,6 +106,7 @@ public class PostService {
 
         if (post.getImages() != null && !post.getImages().isEmpty()) {
             List<String> imageUrls = post.getImages().stream()
+                    .filter(img -> !"VIDEO".equals(img.getMediaType()))
                     .map(PostImage::getImageUrl)
                     .collect(Collectors.toList());
             fileStorageService.deleteFiles(imageUrls);

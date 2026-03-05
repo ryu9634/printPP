@@ -252,35 +252,59 @@ function extractYouTubeId(url) {
 
 // PHOTO/ARTICLE용 분할 레이아웃 렌더링
 function renderSplitDetail(modal, post) {
-    // 좌측 패널에 표시할 아이템 수집
+    // 통합 미디어 리스트에서 아이템 수집
     const items = [];
 
-    if (post.thumbnail) {
-        items.push({
-            type: 'image',
-            url: `${API_BASE_URL}/files/${post.thumbnail}`,
-            description: null
-        });
-    }
-
     if (post.images && post.images.length > 0) {
-        post.images.forEach(img => {
+        const sorted = [...post.images].sort((a, b) =>
+            (a.displayOrder || 0) - (b.displayOrder || 0));
+
+        sorted.forEach(img => {
+            if (img.mediaType === 'VIDEO') {
+                const videoId = extractYouTubeId(img.imageUrl);
+                if (videoId) {
+                    items.push({
+                        type: 'video',
+                        videoId: videoId,
+                        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                        showDescription: img.showDescription !== false,
+                        showImageDescription: img.showImageDescription || false,
+                        descriptionPosition: img.descriptionPosition || 'right'
+                    });
+                }
+            } else {
+                items.push({
+                    type: 'image',
+                    url: `${API_BASE_URL}/files/${img.imageUrl}`,
+                    description: img.imageDescription,
+                    showDescription: img.showDescription !== false,
+                    showImageDescription: img.showImageDescription || false,
+                    descriptionPosition: img.descriptionPosition || 'right'
+                });
+            }
+        });
+    } else {
+        // 하위호환: images 비어있으면 기존 thumbnail + videoUrl 폴백
+        if (post.thumbnail) {
             items.push({
                 type: 'image',
-                url: `${API_BASE_URL}/files/${img.imageUrl}`,
-                description: img.imageDescription
+                url: `${API_BASE_URL}/files/${post.thumbnail}`,
+                description: null,
+                showDescription: true,
+                descriptionPosition: 'right'
             });
-        });
-    }
-
-    if (post.videoUrl) {
-        const videoId = extractYouTubeId(post.videoUrl);
-        if (videoId) {
-            items.push({
-                type: 'video',
-                videoId: videoId,
-                thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-            });
+        }
+        if (post.videoUrl) {
+            const videoId = extractYouTubeId(post.videoUrl);
+            if (videoId) {
+                items.push({
+                    type: 'video',
+                    videoId: videoId,
+                    thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                    showDescription: false,
+                    descriptionPosition: 'right'
+                });
+            }
         }
     }
 
@@ -315,6 +339,7 @@ function renderSplitDetail(modal, post) {
                     <div class="detail-description">
                         ${descriptionHtml}
                     </div>
+                    <div class="detail-image-desc"></div>
                 </div>
             </div>
         </div>
@@ -350,22 +375,68 @@ function renderSplitDetail(modal, post) {
 // 우측 메인 뷰 업데이트
 function renderMainView(modal, items, index) {
     const mainView = modal.querySelector('.detail-main-view');
+    const detailInfo = modal.querySelector('.detail-info');
+    const detailRight = modal.querySelector('.detail-right');
+    const imgDescArea = modal.querySelector('.detail-image-desc');
     const item = items[index];
 
+    const hasImgDesc = item.showImageDescription && item.description;
+
+    // 콘텐츠 HTML
+    let contentHtml;
     if (item.type === 'video') {
-        mainView.innerHTML = `
+        contentHtml = `
             <div class="main-video-wrapper">
                 <iframe src="https://www.youtube.com/embed/${item.videoId}?rel=0"
                     frameborder="0" allowfullscreen
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
-            </div>
+            </div>`;
+    } else {
+        contentHtml = `<img src="${item.url}" alt="" class="main-view-image" loading="lazy">`;
+    }
+
+    // 이미지 설명 하단 → 콘텐츠 아래에 직접 배치
+    if (hasImgDesc && item.descriptionPosition === 'bottom') {
+        mainView.innerHTML = `
+            ${contentHtml}
+            <p class="main-view-desc">${escapeHtml(item.description)}</p>
         `;
     } else {
-        mainView.innerHTML = `
-            <img src="${item.url}" alt="" class="main-view-image" loading="lazy">
-            ${item.description ? `<p class="main-view-desc">${escapeHtml(item.description)}</p>` : ''}
-        `;
+        mainView.innerHTML = contentHtml;
     }
+
+    // 이미지 설명 우측 → detail-info 영역 안에 표시 (메인 설명과 같은 패널)
+    if (imgDescArea) {
+        if (hasImgDesc && item.descriptionPosition === 'right') {
+            imgDescArea.innerHTML = `<div class="image-desc-in-info">${escapeHtml(item.description)}</div>`;
+            imgDescArea.style.display = '';
+        } else {
+            imgDescArea.innerHTML = '';
+            imgDescArea.style.display = 'none';
+        }
+    }
+
+    // 레이아웃 결정
+    detailRight.classList.remove('layout-fullwidth', 'layout-right', 'layout-bottom');
+
+    // 메인 설명 또는 이미지 설명 우측 → 우측 패널 표시
+    const showRightPanel = item.showDescription || (hasImgDesc && item.descriptionPosition === 'right');
+
+    if (showRightPanel) {
+        detailRight.classList.add('layout-right');
+        if (detailInfo) detailInfo.style.display = '';
+    } else {
+        detailRight.classList.add('layout-fullwidth');
+        if (detailInfo) detailInfo.style.display = 'none';
+    }
+
+    // 메인 설명 콘텐츠 (제목/메타/설명) 숨김 처리
+    const titleEl = modal.querySelector('.detail-title');
+    const metaEl = modal.querySelector('.detail-meta');
+    const descEl = modal.querySelector('.detail-description');
+    if (titleEl) titleEl.style.display = item.showDescription ? '' : 'none';
+    if (metaEl) metaEl.style.display = item.showDescription ? '' : 'none';
+    if (descEl) descEl.style.display = item.showDescription ? '' : 'none';
 }
 
 // 설명 렌더링 (ARTICLE: Quill, PHOTO: 일반 텍스트)

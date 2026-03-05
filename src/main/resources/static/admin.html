@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 페이지 - Portfolio Admin</title>
-    <link rel="stylesheet" href="styles/admin.css?v=3">
+    <link rel="stylesheet" href="styles/admin.css?v=4">
 
     <!-- Quill.js CDN -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -184,13 +184,6 @@
                         <textarea id="post-description-text" rows="4" placeholder="작품에 대한 설명..."></textarea>
                     </div>
 
-                    <!-- PHOTO/ARTICLE 타입에서 표시 - YouTube 비디오 URL -->
-                    <div class="form-group" id="video-url-group" style="display: none;">
-                        <label for="post-video-url">YouTube 비디오 URL (선택사항)</label>
-                        <input type="text" id="post-video-url" placeholder="https://www.youtube.com/watch?v=...">
-                        <small>YouTube URL, 공유 링크(youtu.be), 또는 embed URL을 입력하세요</small>
-                    </div>
-
                     <!-- ARTICLE 타입에서만 표시 -->
                     <div class="form-group" id="article-editor-group" style="display: none;">
                         <label>본문 (리치 에디터)</label>
@@ -205,13 +198,16 @@
                                   style="font-family: monospace;"></textarea>
                     </div>
 
-                    <!-- PHOTO 타입에서만 표시 -->
+                    <!-- PHOTO/ARTICLE 타입에서 표시 -->
                     <div class="form-group" id="additional-images-group" style="display: none;">
-                        <label>추가 이미지 URL</label>
+                        <label>미디어 목록</label>
                         <div id="additional-images">
-                            <!-- 추가 이미지 입력 필드가 여기에 표시됩니다 -->
+                            <!-- 미디어 항목이 여기에 표시됩니다 -->
                         </div>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="addImageInput()">+ 이미지 추가</button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="addMediaInput()">+ 이미지 추가</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="addMediaInput({mediaType:'VIDEO'})">+ 영상 추가</button>
+                        </div>
                     </div>
                 </div>
 
@@ -237,6 +233,6 @@
         </div>
     </div>
 
-    <script src="scripts/admin.js?v=3"></script>
+    <script src="scripts/admin.js?v=4"></script>
 </body>
 </html>

@@ -316,7 +316,6 @@ function closeModal(modalId) {
     } else if (modalId === 'post-modal') {
         document.getElementById('post-form').reset();
         document.getElementById('additional-images').innerHTML = '';
-        document.getElementById('post-video-url').value = '';
         document.getElementById('cv-pdf-filename').value = '';
         document.getElementById('cv-pdf-group').style.display = 'none';
         document.getElementById('normal-post-fields').style.display = '';
@@ -458,7 +457,6 @@ function handleContentTypeChange() {
 
     document.getElementById('thumbnail-group').style.display = 'none';
     document.getElementById('photo-description-group').style.display = 'none';
-    document.getElementById('video-url-group').style.display = 'none';
     document.getElementById('article-editor-group').style.display = 'none';
     document.getElementById('html-editor-group').style.display = 'none';
     document.getElementById('additional-images-group').style.display = 'none';
@@ -466,12 +464,11 @@ function handleContentTypeChange() {
     if (contentType === 'PHOTO') {
         document.getElementById('thumbnail-group').style.display = 'block';
         document.getElementById('photo-description-group').style.display = 'block';
-        document.getElementById('video-url-group').style.display = 'block';
         document.getElementById('additional-images-group').style.display = 'block';
     } else if (contentType === 'ARTICLE') {
         document.getElementById('thumbnail-group').style.display = 'block';
         document.getElementById('article-editor-group').style.display = 'block';
-        document.getElementById('video-url-group').style.display = 'block';
+        document.getElementById('additional-images-group').style.display = 'block';
     } else if (contentType === 'HTML') {
         document.getElementById('html-editor-group').style.display = 'block';
     }
@@ -533,7 +530,6 @@ async function editPost(postId) {
         document.getElementById('post-medium').value = post.medium;
         document.getElementById('post-size').value = post.size;
         document.getElementById('post-thumbnail').value = post.thumbnail || '';
-        document.getElementById('post-video-url').value = post.videoUrl || '';
 
         handleContentTypeChange();
 
@@ -544,12 +540,6 @@ async function editPost(postId) {
 
         if (post.contentType === 'PHOTO') {
             document.getElementById('post-description-text').value = post.description || '';
-
-            const additionalImages = document.getElementById('additional-images');
-            additionalImages.innerHTML = '';
-            if (post.images && post.images.length > 0) {
-                post.images.forEach(img => addImageInput(img.imageUrl || '', img.imageDescription || ''));
-            }
         } else if (post.contentType === 'ARTICLE') {
             if (post.description) {
                 try {
@@ -562,6 +552,36 @@ async function editPost(postId) {
             }
         } else if (post.contentType === 'HTML') {
             document.getElementById('post-html-content').value = post.htmlContent || '';
+        }
+
+        // 통합 미디어 리스트 로드
+        const additionalImages = document.getElementById('additional-images');
+        additionalImages.innerHTML = '';
+
+        if (post.images && post.images.length > 0) {
+            const sorted = [...post.images].sort((a, b) =>
+                (a.displayOrder || 0) - (b.displayOrder || 0));
+
+            sorted.forEach(img => {
+                addMediaInput({
+                    imageUrl: img.imageUrl || '',
+                    imageDescription: img.imageDescription || '',
+                    mediaType: img.mediaType || 'IMAGE',
+                    showDescription: img.showDescription !== false,
+                    showImageDescription: img.showImageDescription || false,
+                    descriptionPosition: img.descriptionPosition || 'right'
+                });
+            });
+        }
+
+        // 하위호환: videoUrl이 있는데 images에 VIDEO 항목이 없으면 추가
+        if (post.videoUrl && !(post.images && post.images.some(img => img.mediaType === 'VIDEO'))) {
+            addMediaInput({
+                imageUrl: post.videoUrl,
+                mediaType: 'VIDEO',
+                showDescription: false,
+                descriptionPosition: 'right'
+            });
         }
 
         clearUnsaved();
@@ -757,72 +777,183 @@ async function handleCvPdfFile(file, dropZone) {
 }
 
 // ============================
-// 추가 이미지 입력 (프리뷰 + 설명 포함)
+// 통합 미디어 입력 (이미지/영상, 순서변경, 설명옵션)
 // ============================
-function addImageInput(imageUrl = '', imageDescription = '') {
+function addMediaInput(options = {}) {
+    const {
+        imageUrl = '',
+        imageDescription = '',
+        mediaType = 'IMAGE',
+        showDescription = true,
+        descriptionPosition = 'right'
+    } = options;
+
     const container = document.getElementById('additional-images');
     const wrapper = document.createElement('div');
     wrapper.className = 'image-entry';
+    wrapper.dataset.mediaType = mediaType;
     wrapper.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;';
 
-    // 상단: 파일명 + 버튼들
+    // 상단: 순서버튼 + 타입 + 파일명 + 버튼들
     const topRow = document.createElement('div');
     topRow.className = 'image-input-group';
-    topRow.style.flexWrap = 'wrap';
+    topRow.style.cssText = 'display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;';
 
+    // 순서 변경 버튼
+    const upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.className = 'btn btn-secondary btn-sm btn-reorder';
+    upBtn.textContent = '\u25B2';
+    upBtn.title = '위로';
+    upBtn.onclick = () => moveMediaEntry(wrapper, -1);
+
+    const downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.className = 'btn btn-secondary btn-sm btn-reorder';
+    downBtn.textContent = '\u25BC';
+    downBtn.title = '아래로';
+    downBtn.onclick = () => moveMediaEntry(wrapper, 1);
+
+    // 타입 뱃지
+    const typeBadge = document.createElement('span');
+    typeBadge.className = `badge ${mediaType === 'VIDEO' ? 'badge-html' : 'badge-photo'}`;
+    typeBadge.textContent = mediaType === 'VIDEO' ? 'VIDEO' : 'IMAGE';
+    typeBadge.style.marginRight = '0.3rem';
+
+    // URL/파일명 입력
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'additional-image-url';
     input.value = imageUrl;
-    input.placeholder = '파일명';
-    input.readOnly = true;
+    input.style.flex = '1';
 
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
+    if (mediaType === 'VIDEO') {
+        input.placeholder = 'YouTube URL (예: https://www.youtube.com/watch?v=...)';
+        input.readOnly = false;
+        input.addEventListener('input', markUnsaved);
+    } else {
+        input.placeholder = '파일명';
+        input.readOnly = true;
+    }
 
-    const selectBtn = document.createElement('button');
-    selectBtn.type = 'button';
-    selectBtn.className = 'btn btn-secondary btn-sm';
-    selectBtn.textContent = '파일 선택';
-    selectBtn.onclick = () => fileInput.click();
+    // 파일 선택 (IMAGE만)
+    let fileInput, selectBtn;
+    if (mediaType === 'IMAGE') {
+        fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
 
-    fileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const localUrl = URL.createObjectURL(file);
-            showInlinePreview(wrapper, localUrl);
+        selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'btn btn-secondary btn-sm';
+        selectBtn.textContent = '파일 선택';
+        selectBtn.onclick = () => fileInput.click();
 
-            try {
-                selectBtn.textContent = '업로드 중...';
-                selectBtn.disabled = true;
-                const fileName = await uploadImage(file);
-                input.value = fileName;
-                showInlinePreview(wrapper, `${API_BASE_URL}/files/${fileName}`);
-                showToast('이미지가 업로드되었습니다.', 'success');
-                markUnsaved();
-            } catch (error) {
-                removeInlinePreview(wrapper);
-                showToast('파일 업로드에 실패했습니다.', 'error');
-            } finally {
-                selectBtn.textContent = '파일 선택';
-                selectBtn.disabled = false;
-                URL.revokeObjectURL(localUrl);
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const localUrl = URL.createObjectURL(file);
+                showInlinePreview(wrapper, localUrl);
+                try {
+                    selectBtn.textContent = '업로드 중...';
+                    selectBtn.disabled = true;
+                    const fileName = await uploadImage(file);
+                    input.value = fileName;
+                    showInlinePreview(wrapper, `${API_BASE_URL}/files/${fileName}`);
+                    showToast('이미지가 업로드되었습니다.', 'success');
+                    markUnsaved();
+                } catch (error) {
+                    removeInlinePreview(wrapper);
+                    showToast('파일 업로드에 실패했습니다.', 'error');
+                } finally {
+                    selectBtn.textContent = '파일 선택';
+                    selectBtn.disabled = false;
+                    URL.revokeObjectURL(localUrl);
+                }
             }
-        }
-    };
+        };
+    }
 
+    // 삭제 버튼
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn-remove-image';
     removeBtn.textContent = '삭제';
     removeBtn.onclick = () => { wrapper.remove(); markUnsaved(); };
 
+    topRow.appendChild(upBtn);
+    topRow.appendChild(downBtn);
+    topRow.appendChild(typeBadge);
     topRow.appendChild(input);
-    topRow.appendChild(fileInput);
-    topRow.appendChild(selectBtn);
+    if (mediaType === 'IMAGE') {
+        topRow.appendChild(fileInput);
+        topRow.appendChild(selectBtn);
+    }
     topRow.appendChild(removeBtn);
+
+    // 옵션 행: 메인 설명 + 이미지 설명 + 위치
+    const optionsRow = document.createElement('div');
+    optionsRow.className = 'media-options';
+    optionsRow.style.cssText = 'margin-top: 0.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; font-size: 0.85rem;';
+
+    // 메인 설명 표시 체크박스
+    const showDescLabel = document.createElement('label');
+    showDescLabel.style.cssText = 'display: flex; align-items: center; gap: 0.3rem; cursor: pointer; font-weight: normal; margin: 0;';
+    const showDescCheck = document.createElement('input');
+    showDescCheck.type = 'checkbox';
+    showDescCheck.className = 'show-description-check';
+    showDescCheck.checked = showDescription;
+    showDescLabel.appendChild(showDescCheck);
+    showDescLabel.appendChild(document.createTextNode('메인 설명'));
+
+    // 이미지 설명 표시 체크박스
+    const showImgDescLabel = document.createElement('label');
+    showImgDescLabel.style.cssText = 'display: flex; align-items: center; gap: 0.3rem; cursor: pointer; font-weight: normal; margin: 0;';
+    const showImgDescCheck = document.createElement('input');
+    showImgDescCheck.type = 'checkbox';
+    showImgDescCheck.className = 'show-image-description-check';
+    showImgDescCheck.checked = options.showImageDescription || false;
+    showImgDescLabel.appendChild(showImgDescCheck);
+    showImgDescLabel.appendChild(document.createTextNode('이미지 설명'));
+
+    // 이미지 설명 위치 선택
+    const posSelect = document.createElement('select');
+    posSelect.className = 'description-position-select';
+    posSelect.style.cssText = 'font-size: 0.85rem; padding: 0.2rem 0.4rem;';
+    posSelect.innerHTML = `
+        <option value="right" ${descriptionPosition === 'right' ? 'selected' : ''}>이미지 설명: 우측</option>
+        <option value="bottom" ${descriptionPosition === 'bottom' ? 'selected' : ''}>이미지 설명: 하단</option>
+    `;
+    // 초기 상태 설정
+    function updatePosSelectState() {
+        const imgDescChecked = showImgDescCheck.checked;
+        const mainDescChecked = showDescCheck.checked;
+        posSelect.disabled = !imgDescChecked;
+        // 메인 설명 체크 시 우측 옵션 비활성화 → 하단으로 강제
+        const rightOption = posSelect.querySelector('option[value="right"]');
+        if (mainDescChecked) {
+            rightOption.disabled = true;
+            if (posSelect.value === 'right') posSelect.value = 'bottom';
+        } else {
+            rightOption.disabled = false;
+        }
+    }
+    updatePosSelectState();
+
+    showDescCheck.onchange = () => {
+        updatePosSelectState();
+        markUnsaved();
+    };
+    showImgDescCheck.onchange = () => {
+        updatePosSelectState();
+        markUnsaved();
+    };
+    posSelect.onchange = () => markUnsaved();
+
+    optionsRow.appendChild(showDescLabel);
+    optionsRow.appendChild(showImgDescLabel);
+    optionsRow.appendChild(posSelect);
 
     // 이미지 설명 입력
     const descInput = document.createElement('textarea');
@@ -833,14 +964,51 @@ function addImageInput(imageUrl = '', imageDescription = '') {
     descInput.style.cssText = 'width: 100%; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid #e0e0e0; border-radius: 4px; font-family: inherit; font-size: 0.9rem; resize: vertical;';
 
     wrapper.appendChild(topRow);
+    wrapper.appendChild(optionsRow);
     wrapper.appendChild(descInput);
 
-    // 기존 이미지 URL이 있으면 프리뷰 표시
-    if (imageUrl) {
+    // 프리뷰
+    if (mediaType === 'IMAGE' && imageUrl) {
         showInlinePreview(wrapper, `${API_BASE_URL}/files/${imageUrl}`);
+    } else if (mediaType === 'VIDEO' && imageUrl) {
+        const videoId = extractYouTubeId(imageUrl);
+        if (videoId) {
+            showInlinePreview(wrapper, `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`);
+        }
     }
 
     container.appendChild(wrapper);
+}
+
+// 하위호환용
+function addImageInput(imageUrl, imageDescription) {
+    addMediaInput({ imageUrl: imageUrl || '', imageDescription: imageDescription || '' });
+}
+
+// 미디어 항목 순서 이동
+function moveMediaEntry(wrapper, direction) {
+    const container = document.getElementById('additional-images');
+    const entries = Array.from(container.children);
+    const index = entries.indexOf(wrapper);
+    const targetIndex = index + direction;
+
+    if (targetIndex < 0 || targetIndex >= entries.length) return;
+
+    if (direction === -1) {
+        container.insertBefore(wrapper, entries[targetIndex]);
+    } else {
+        container.insertBefore(wrapper, entries[targetIndex].nextSibling);
+    }
+    markUnsaved();
+}
+
+// YouTube URL에서 Video ID 추출
+function extractYouTubeId(url) {
+    if (!url) return null;
+    const match = url.match(
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
+    );
+    return match ? match[1] : null;
 }
 
 function showInlinePreview(container, src) {
@@ -922,21 +1090,50 @@ async function handleSavePost(event) {
         size: document.getElementById('post-size').value
     };
 
+    // 통합 미디어 리스트 수집
+    const mediaEntries = Array.from(document.querySelectorAll('.image-entry'))
+        .map((entry, index) => ({
+            imageUrl: entry.querySelector('.additional-image-url').value,
+            imageDescription: entry.querySelector('.additional-image-desc')?.value || '',
+            displayOrder: index,
+            mediaType: entry.dataset.mediaType || 'IMAGE',
+            showDescription: entry.querySelector('.show-description-check')?.checked ?? true,
+            showImageDescription: entry.querySelector('.show-image-description-check')?.checked ?? false,
+            descriptionPosition: entry.querySelector('.description-position-select')?.value || 'right'
+        }))
+        .filter(img => img.imageUrl.trim() !== '');
+
     if (contentType === 'PHOTO') {
         postData.thumbnail = document.getElementById('post-thumbnail').value;
         postData.description = document.getElementById('post-description-text').value;
-        postData.videoUrl = document.getElementById('post-video-url').value;
-        postData.images = Array.from(document.querySelectorAll('.image-entry'))
-            .map(entry => ({
-                imageUrl: entry.querySelector('.additional-image-url').value,
-                imageDescription: entry.querySelector('.additional-image-desc').value
-            }))
-            .filter(img => img.imageUrl.trim() !== '');
+
+        // 썸네일이 미디어 리스트에 없으면 맨 앞에 추가
+        const thumbVal = postData.thumbnail;
+        if (thumbVal && !mediaEntries.some(e => e.imageUrl === thumbVal && e.mediaType === 'IMAGE')) {
+            mediaEntries.unshift({
+                imageUrl: thumbVal,
+                imageDescription: '',
+                displayOrder: 0,
+                mediaType: 'IMAGE',
+                showDescription: true,
+                descriptionPosition: 'right'
+            });
+        }
+
+        // displayOrder 재정렬
+        mediaEntries.forEach((e, i) => { e.displayOrder = i; });
+        postData.images = mediaEntries;
+
+        // thumbnail은 첫 번째 IMAGE 항목으로 설정
+        const firstImage = mediaEntries.find(e => e.mediaType === 'IMAGE');
+        if (firstImage) postData.thumbnail = firstImage.imageUrl;
     } else if (contentType === 'ARTICLE') {
         postData.thumbnail = document.getElementById('post-thumbnail').value;
-        postData.videoUrl = document.getElementById('post-video-url').value;
         const delta = adminState.quillEditor.getContents();
         postData.description = JSON.stringify(delta);
+
+        mediaEntries.forEach((e, i) => { e.displayOrder = i; });
+        postData.images = mediaEntries;
     } else if (contentType === 'HTML') {
         postData.htmlContent = document.getElementById('post-html-content').value;
     }

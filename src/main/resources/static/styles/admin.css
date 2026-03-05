@@ -407,6 +407,30 @@ body {
     background-color: #c82333;
 }
 
+/* 순서 변경 버튼 */
+.btn-reorder {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    line-height: 1;
+    min-width: 26px;
+}
+
+/* 미디어 옵션 행 */
+.media-options {
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.media-options label {
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+.media-options select {
+    width: auto;
+    min-width: auto;
+}
+
 /* 뱃지 */
 .badge {
     display: inline-block;
