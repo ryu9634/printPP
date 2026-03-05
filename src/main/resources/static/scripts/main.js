@@ -131,23 +131,57 @@ async function renderPage(page) {
     }
 }
 
-// CV 페이지 렌더링 (PDF 뷰어)
+// CV 페이지 렌더링 (PDF.js로 직접 렌더링)
 function renderCvPage(container, posts) {
-    // 첫 번째 게시글의 썸네일이 PDF인지 확인
     const pdfPost = posts.find(p => p.thumbnail && p.thumbnail.toLowerCase().endsWith('.pdf'));
 
-    if (pdfPost) {
-        container.innerHTML = `
-            <div class="cv-pdf-viewer">
-                <embed src="${API_BASE_URL}/files/${pdfPost.thumbnail}" type="application/pdf">
-            </div>
-        `;
-    } else if (posts.length > 0) {
-        // PDF가 없으면 일반 게시글로 표시
-        renderPostsPage(container, posts);
-    } else {
-        container.innerHTML = '<div class="empty-state"><p>CV가 등록되지 않았습니다</p></div>';
+    if (!pdfPost) {
+        if (posts.length > 0) {
+            renderPostsPage(container, posts);
+        } else {
+            container.innerHTML = '<div class="empty-state"><p>CV가 등록되지 않았습니다</p></div>';
+        }
+        return;
     }
+
+    container.innerHTML = '<div class="cv-pages" id="cv-pages-container"></div>';
+    const pagesContainer = document.getElementById('cv-pages-container');
+
+    const pdfUrl = `${API_BASE_URL}/files/${pdfPost.thumbnail}`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+        for (let i = 1; i <= pdf.numPages; i++) {
+            pdf.getPage(i).then(page => {
+                const scale = 2;
+                const viewport = page.getViewport({ scale });
+
+                const canvas = document.createElement('canvas');
+                canvas.className = 'cv-page-canvas';
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                const ctx = canvas.getContext('2d');
+                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
+                    // 페이지 순서 보장
+                    const pages = pagesContainer.querySelectorAll('.cv-page-canvas');
+                    let inserted = false;
+                    for (const existing of pages) {
+                        if (parseInt(existing.dataset.page) > i) {
+                            pagesContainer.insertBefore(canvas, existing);
+                            inserted = true;
+                            break;
+                        }
+                    }
+                    if (!inserted) pagesContainer.appendChild(canvas);
+                });
+                canvas.dataset.page = i;
+            });
+        }
+    }).catch(err => {
+        console.error('PDF 로드 실패:', err);
+        container.innerHTML = '<div class="empty-state"><p>CV를 불러올 수 없습니다</p></div>';
+    });
 }
 
 // 게시글 페이지 렌더링

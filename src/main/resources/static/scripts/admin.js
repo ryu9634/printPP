@@ -91,7 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCvPdfUpload();
     initializeQuillEditor();
     setupFormChangeTracking();
-    document.getElementById('post-category').addEventListener('change', handleCategoryChange);
 });
 
 // 폼 변경사항 추적 설정
@@ -319,6 +318,8 @@ function closeModal(modalId) {
         document.getElementById('additional-images').innerHTML = '';
         document.getElementById('post-video-url').value = '';
         document.getElementById('cv-pdf-filename').value = '';
+        document.getElementById('cv-pdf-group').style.display = 'none';
+        document.getElementById('normal-post-fields').style.display = '';
         const cvDropZone = document.getElementById('cv-pdf-drop-zone');
         if (cvDropZone) cvDropZone.innerHTML = '<div class="drop-icon">📄</div><p>PDF 파일을 드래그하거나 클릭하여 선택</p>';
         clearThumbnailPreview();
@@ -439,51 +440,12 @@ function initializeQuillEditor() {
 // ============================
 function handleCategoryChange() {
     const categoryId = document.getElementById('post-category').value;
-    const isCv = categoryId === 'cv';
+    const isCv = (categoryId === 'cv');
 
-    // CV 전용 필드 그룹
-    const cvGroup = document.getElementById('cv-pdf-group');
-    // 일반 필드 그룹들
-    const normalFields = [
-        'post-content-type', 'post-title', 'post-year', 'post-medium', 'post-size'
-    ];
-    const contentTypeGroup = document.getElementById('post-content-type').closest('.form-group');
-    const titleGroup = document.getElementById('post-title').closest('.form-group');
-    const formRow = document.querySelector('.form-row');
+    document.getElementById('cv-pdf-group').style.display = isCv ? 'block' : 'none';
+    document.getElementById('normal-post-fields').style.display = isCv ? 'none' : '';
 
-    if (isCv) {
-        // CV 모드: 일반 필드 숨기고 PDF 업로드만 표시
-        contentTypeGroup.style.display = 'none';
-        titleGroup.style.display = 'none';
-        formRow.style.display = 'none';
-        cvGroup.style.display = 'block';
-
-        // 콘텐츠 타입별 필드 모두 숨김
-        document.getElementById('thumbnail-group').style.display = 'none';
-        document.getElementById('photo-description-group').style.display = 'none';
-        document.getElementById('video-url-group').style.display = 'none';
-        document.getElementById('article-editor-group').style.display = 'none';
-        document.getElementById('html-editor-group').style.display = 'none';
-        document.getElementById('additional-images-group').style.display = 'none';
-
-        // required 해제 (저장 시 자동 채움)
-        normalFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.removeAttribute('required');
-        });
-    } else {
-        // 일반 모드: 필드 복원
-        contentTypeGroup.style.display = '';
-        titleGroup.style.display = '';
-        formRow.style.display = '';
-        cvGroup.style.display = 'none';
-
-        // required 복원
-        normalFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.setAttribute('required', '');
-        });
-
+    if (!isCv) {
         handleContentTypeChange();
     }
 }

@@ -595,18 +595,23 @@ body {
     pointer-events: auto;
 }
 
-/* CV PDF Viewer */
-.cv-pdf-viewer {
+/* CV Pages (PDF.js 렌더링) */
+.cv-pages {
     width: 100%;
-    height: calc(100vh - 40px);
+    max-width: 900px;
+    margin: 0 auto;
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
 }
 
-.cv-pdf-viewer embed {
+.cv-page-canvas {
     width: 100%;
-    height: 100%;
-    border: none;
+    height: auto;
     border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .back-to-top:hover {

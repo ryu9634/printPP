@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 페이지 - Portfolio Admin</title>
-    <link rel="stylesheet" href="styles/admin.css">
+    <link rel="stylesheet" href="styles/admin.css?v=3">
 
     <!-- Quill.js CDN -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -127,87 +127,92 @@
 
                 <div class="form-group">
                     <label for="post-category">카테고리</label>
-                    <select id="post-category" required>
+                    <select id="post-category" onchange="handleCategoryChange()">
                         <option value="">선택하세요</option>
                     </select>
                 </div>
 
                 <!-- CV 카테고리 전용 PDF 업로드 -->
-                <div class="form-group" id="cv-pdf-group" style="display: none;">
-                    <label>CV PDF 파일</label>
-                    <input type="hidden" id="cv-pdf-filename">
-                </div>
-
-                <div class="form-group">
-                    <label for="post-content-type">콘텐츠 타입</label>
-                    <select id="post-content-type" required onchange="handleContentTypeChange()">
-                        <option value="">선택하세요</option>
-                        <option value="PHOTO">PHOTO - 이미지 갤러리</option>
-                        <option value="ARTICLE">ARTICLE - 텍스트 기사</option>
-                        <option value="HTML">HTML - 커스텀 HTML</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="post-title">제목</label>
-                    <input type="text" id="post-title" required placeholder="작품 제목">
-                </div>
-
-                <div class="form-row">
+                <div id="cv-pdf-group" style="display: none;">
                     <div class="form-group">
-                        <label for="post-year">연도</label>
-                        <input type="text" id="post-year" required placeholder="2024">
+                        <label>CV PDF 파일</label>
+                        <input type="hidden" id="cv-pdf-filename">
                     </div>
+                </div>
+
+                <!-- 일반 게시글 필드 (CV 선택 시 숨김) -->
+                <div id="normal-post-fields">
                     <div class="form-group">
-                        <label for="post-medium">매체</label>
-                        <input type="text" id="post-medium" required placeholder="캔버스에 아크릴">
+                        <label for="post-content-type">콘텐츠 타입</label>
+                        <select id="post-content-type" onchange="handleContentTypeChange()">
+                            <option value="">선택하세요</option>
+                            <option value="PHOTO">PHOTO - 이미지 갤러리</option>
+                            <option value="ARTICLE">ARTICLE - 텍스트 기사</option>
+                            <option value="HTML">HTML - 커스텀 HTML</option>
+                        </select>
                     </div>
+
                     <div class="form-group">
-                        <label for="post-size">크기</label>
-                        <input type="text" id="post-size" required placeholder="100x80cm">
+                        <label for="post-title">제목</label>
+                        <input type="text" id="post-title" placeholder="작품 제목">
                     </div>
-                </div>
 
-                <!-- PHOTO/ARTICLE 타입에서 표시 -->
-                <div class="form-group" id="thumbnail-group" style="display: none;">
-                    <label for="post-thumbnail">썸네일 이미지</label>
-                    <input type="text" id="post-thumbnail" placeholder="파일명" readonly>
-                </div>
-
-                <!-- PHOTO 타입에서만 표시 -->
-                <div class="form-group" id="photo-description-group" style="display: none;">
-                    <label for="post-description-text">설명</label>
-                    <textarea id="post-description-text" rows="4" placeholder="작품에 대한 설명..."></textarea>
-                </div>
-
-                <!-- PHOTO/ARTICLE 타입에서 표시 - YouTube 비디오 URL -->
-                <div class="form-group" id="video-url-group" style="display: none;">
-                    <label for="post-video-url">YouTube 비디오 URL (선택사항)</label>
-                    <input type="text" id="post-video-url" placeholder="https://www.youtube.com/watch?v=...">
-                    <small>YouTube URL, 공유 링크(youtu.be), 또는 embed URL을 입력하세요</small>
-                </div>
-
-                <!-- ARTICLE 타입에서만 표시 -->
-                <div class="form-group" id="article-editor-group" style="display: none;">
-                    <label>본문 (리치 에디터)</label>
-                    <div id="quill-editor" style="height: 300px;"></div>
-                </div>
-
-                <!-- HTML 타입에서만 표시 -->
-                <div class="form-group" id="html-editor-group" style="display: none;">
-                    <label for="post-html-content">HTML 코드</label>
-                    <textarea id="post-html-content" rows="15"
-                              placeholder="HTML 코드를 입력하세요..."
-                              style="font-family: monospace;"></textarea>
-                </div>
-
-                <!-- PHOTO 타입에서만 표시 -->
-                <div class="form-group" id="additional-images-group" style="display: none;">
-                    <label>추가 이미지 URL</label>
-                    <div id="additional-images">
-                        <!-- 추가 이미지 입력 필드가 여기에 표시됩니다 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="post-year">연도</label>
+                            <input type="text" id="post-year" placeholder="2024">
+                        </div>
+                        <div class="form-group">
+                            <label for="post-medium">매체</label>
+                            <input type="text" id="post-medium" placeholder="캔버스에 아크릴">
+                        </div>
+                        <div class="form-group">
+                            <label for="post-size">크기</label>
+                            <input type="text" id="post-size" placeholder="100x80cm">
+                        </div>
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addImageInput()">+ 이미지 추가</button>
+
+                    <!-- PHOTO/ARTICLE 타입에서 표시 -->
+                    <div class="form-group" id="thumbnail-group" style="display: none;">
+                        <label for="post-thumbnail">썸네일 이미지</label>
+                        <input type="text" id="post-thumbnail" placeholder="파일명" readonly>
+                    </div>
+
+                    <!-- PHOTO 타입에서만 표시 -->
+                    <div class="form-group" id="photo-description-group" style="display: none;">
+                        <label for="post-description-text">설명</label>
+                        <textarea id="post-description-text" rows="4" placeholder="작품에 대한 설명..."></textarea>
+                    </div>
+
+                    <!-- PHOTO/ARTICLE 타입에서 표시 - YouTube 비디오 URL -->
+                    <div class="form-group" id="video-url-group" style="display: none;">
+                        <label for="post-video-url">YouTube 비디오 URL (선택사항)</label>
+                        <input type="text" id="post-video-url" placeholder="https://www.youtube.com/watch?v=...">
+                        <small>YouTube URL, 공유 링크(youtu.be), 또는 embed URL을 입력하세요</small>
+                    </div>
+
+                    <!-- ARTICLE 타입에서만 표시 -->
+                    <div class="form-group" id="article-editor-group" style="display: none;">
+                        <label>본문 (리치 에디터)</label>
+                        <div id="quill-editor" style="height: 300px;"></div>
+                    </div>
+
+                    <!-- HTML 타입에서만 표시 -->
+                    <div class="form-group" id="html-editor-group" style="display: none;">
+                        <label for="post-html-content">HTML 코드</label>
+                        <textarea id="post-html-content" rows="15"
+                                  placeholder="HTML 코드를 입력하세요..."
+                                  style="font-family: monospace;"></textarea>
+                    </div>
+
+                    <!-- PHOTO 타입에서만 표시 -->
+                    <div class="form-group" id="additional-images-group" style="display: none;">
+                        <label>추가 이미지 URL</label>
+                        <div id="additional-images">
+                            <!-- 추가 이미지 입력 필드가 여기에 표시됩니다 -->
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addImageInput()">+ 이미지 추가</button>
+                    </div>
                 </div>
 
                 <div class="modal-footer">
@@ -232,6 +237,6 @@
         </div>
     </div>
 
-    <script src="scripts/admin.js"></script>
+    <script src="scripts/admin.js?v=3"></script>
 </body>
 </html>
