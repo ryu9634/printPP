@@ -132,6 +132,12 @@
                     </select>
                 </div>
 
+                <!-- CV 카테고리 전용 PDF 업로드 -->
+                <div class="form-group" id="cv-pdf-group" style="display: none;">
+                    <label>CV PDF 파일</label>
+                    <input type="hidden" id="cv-pdf-filename">
+                </div>
+
                 <div class="form-group">
                     <label for="post-content-type">콘텐츠 타입</label>
                     <select id="post-content-type" required onchange="handleContentTypeChange()">

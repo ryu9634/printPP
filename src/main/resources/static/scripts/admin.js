@@ -88,8 +88,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
     renderCategoriesTable();
     setupThumbnailUpload();
+    setupCvPdfUpload();
     initializeQuillEditor();
     setupFormChangeTracking();
+    document.getElementById('post-category').addEventListener('change', handleCategoryChange);
 });
 
 // 폼 변경사항 추적 설정
@@ -316,6 +318,9 @@ function closeModal(modalId) {
         document.getElementById('post-form').reset();
         document.getElementById('additional-images').innerHTML = '';
         document.getElementById('post-video-url').value = '';
+        document.getElementById('cv-pdf-filename').value = '';
+        const cvDropZone = document.getElementById('cv-pdf-drop-zone');
+        if (cvDropZone) cvDropZone.innerHTML = '<div class="drop-icon">📄</div><p>PDF 파일을 드래그하거나 클릭하여 선택</p>';
         clearThumbnailPreview();
 
         if (adminState.quillEditor) {
@@ -430,6 +435,60 @@ function initializeQuillEditor() {
 }
 
 // ============================
+// 카테고리 변경 처리 (CV 선택 시 PDF 전용 모드)
+// ============================
+function handleCategoryChange() {
+    const categoryId = document.getElementById('post-category').value;
+    const isCv = categoryId === 'cv';
+
+    // CV 전용 필드 그룹
+    const cvGroup = document.getElementById('cv-pdf-group');
+    // 일반 필드 그룹들
+    const normalFields = [
+        'post-content-type', 'post-title', 'post-year', 'post-medium', 'post-size'
+    ];
+    const contentTypeGroup = document.getElementById('post-content-type').closest('.form-group');
+    const titleGroup = document.getElementById('post-title').closest('.form-group');
+    const formRow = document.querySelector('.form-row');
+
+    if (isCv) {
+        // CV 모드: 일반 필드 숨기고 PDF 업로드만 표시
+        contentTypeGroup.style.display = 'none';
+        titleGroup.style.display = 'none';
+        formRow.style.display = 'none';
+        cvGroup.style.display = 'block';
+
+        // 콘텐츠 타입별 필드 모두 숨김
+        document.getElementById('thumbnail-group').style.display = 'none';
+        document.getElementById('photo-description-group').style.display = 'none';
+        document.getElementById('video-url-group').style.display = 'none';
+        document.getElementById('article-editor-group').style.display = 'none';
+        document.getElementById('html-editor-group').style.display = 'none';
+        document.getElementById('additional-images-group').style.display = 'none';
+
+        // required 해제 (저장 시 자동 채움)
+        normalFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.removeAttribute('required');
+        });
+    } else {
+        // 일반 모드: 필드 복원
+        contentTypeGroup.style.display = '';
+        titleGroup.style.display = '';
+        formRow.style.display = '';
+        cvGroup.style.display = 'none';
+
+        // required 복원
+        normalFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.setAttribute('required', '');
+        });
+
+        handleContentTypeChange();
+    }
+}
+
+// ============================
 // 콘텐츠 타입 변경 처리
 // ============================
 function handleContentTypeChange() {
@@ -465,12 +524,18 @@ function showAddPostModal() {
     document.getElementById('post-id').value = '';
     document.getElementById('post-content-type').value = '';
     document.getElementById('additional-images').innerHTML = '';
+    document.getElementById('cv-pdf-filename').value = '';
     clearThumbnailPreview();
 
     if (adminState.quillEditor) {
         adminState.quillEditor.setText('');
     }
 
+    // CV 모드 리셋
+    const cvDropZone = document.getElementById('cv-pdf-drop-zone');
+    if (cvDropZone) cvDropZone.innerHTML = '<div class="drop-icon">📄</div><p>PDF 파일을 드래그하거나 클릭하여 선택</p>';
+
+    handleCategoryChange();
     handleContentTypeChange();
     clearUnsaved();
     showModal('post-modal');
@@ -485,6 +550,21 @@ async function editPost(postId) {
         document.getElementById('post-modal-title').textContent = '게시글 수정';
         document.getElementById('post-id').value = postId;
         document.getElementById('post-category').value = post.categoryId;
+
+        handleCategoryChange();
+
+        // CV 카테고리인 경우 PDF 파일명만 세팅
+        if (post.categoryId === 'cv') {
+            document.getElementById('cv-pdf-filename').value = post.thumbnail || '';
+            if (post.thumbnail) {
+                const cvDropZone = document.getElementById('cv-pdf-drop-zone');
+                if (cvDropZone) cvDropZone.innerHTML = `<div class="drop-icon">✅</div><p>${post.thumbnail} (업로드됨)</p>`;
+            }
+            clearUnsaved();
+            showModal('post-modal');
+            return;
+        }
+
         document.getElementById('post-content-type').value = post.contentType;
         document.getElementById('post-title').value = post.title;
         document.getElementById('post-year').value = post.year;
@@ -652,6 +732,69 @@ async function handleThumbnailFile(file, dropZone) {
 }
 
 // ============================
+// CV PDF 업로드 설정
+// ============================
+function setupCvPdfUpload() {
+    const cvGroup = document.getElementById('cv-pdf-group');
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.pdf';
+    fileInput.style.display = 'none';
+    fileInput.id = 'cv-pdf-file';
+
+    const dropZone = document.createElement('div');
+    dropZone.className = 'drop-zone';
+    dropZone.id = 'cv-pdf-drop-zone';
+    dropZone.innerHTML = '<div class="drop-icon">📄</div><p>PDF 파일을 드래그하거나 클릭하여 선택</p>';
+    dropZone.onclick = () => fileInput.click();
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === 'application/pdf') {
+            await handleCvPdfFile(file, dropZone);
+        } else {
+            showToast('PDF 파일만 업로드 가능합니다.', 'warning');
+        }
+    });
+
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            await handleCvPdfFile(file, dropZone);
+        }
+    };
+
+    cvGroup.appendChild(fileInput);
+    cvGroup.appendChild(dropZone);
+}
+
+async function handleCvPdfFile(file, dropZone) {
+    const originalText = dropZone.innerHTML;
+    dropZone.innerHTML = '<p>업로드 중...</p>';
+
+    try {
+        const fileName = await uploadImage(file);
+        document.getElementById('cv-pdf-filename').value = fileName;
+        dropZone.innerHTML = `<div class="drop-icon">✅</div><p>${file.name} 업로드 완료</p>`;
+        showToast('PDF가 업로드되었습니다.', 'success');
+        markUnsaved();
+    } catch (error) {
+        dropZone.innerHTML = originalText;
+        showToast('PDF 업로드에 실패했습니다.', 'error');
+    }
+}
+
+// ============================
 // 추가 이미지 입력 (프리뷰 + 설명 포함)
 // ============================
 function addImageInput(imageUrl = '', imageDescription = '') {
@@ -765,8 +908,51 @@ async function handleSavePost(event) {
     const postId = document.getElementById('post-id').value;
     const contentType = document.getElementById('post-content-type').value;
 
+    const categoryId = document.getElementById('post-category').value;
+
+    // CV 카테고리: PDF 전용 처리
+    if (categoryId === 'cv') {
+        const pdfFileName = document.getElementById('cv-pdf-filename').value;
+        if (!pdfFileName) {
+            showToast('PDF 파일을 업로드해주세요.', 'warning');
+            return;
+        }
+
+        const postData = {
+            categoryId: 'cv',
+            contentType: 'PHOTO',
+            title: 'CV',
+            year: '-',
+            medium: '-',
+            size: '-',
+            thumbnail: pdfFileName
+        };
+
+        try {
+            const url = postId ? `${API_BASE_URL}/posts/${postId}` : `${API_BASE_URL}/posts`;
+            const method = postId ? 'PUT' : 'POST';
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postData)
+            });
+            if (response.ok) {
+                clearUnsaved();
+                closeModal('post-modal');
+                await renderPostsGrid();
+                showToast('CV가 저장되었습니다.', 'success');
+            } else {
+                showToast('CV 저장에 실패했습니다.', 'error');
+            }
+        } catch (error) {
+            console.error('CV 저장 실패:', error);
+            showToast('CV 저장 중 오류가 발생했습니다.', 'error');
+        }
+        return;
+    }
+
     const postData = {
-        categoryId: document.getElementById('post-category').value,
+        categoryId: categoryId,
         contentType: contentType,
         title: document.getElementById('post-title').value,
         year: document.getElementById('post-year').value,
