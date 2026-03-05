@@ -90,11 +90,12 @@ public class SecurityConfig {
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp
                     .policyDirectives("default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline' https://cdn.quilljs.com; " +
+                        "script-src 'self' 'unsafe-inline' https://cdn.quilljs.com https://cdnjs.cloudflare.com; " +
                         "style-src 'self' 'unsafe-inline' https://cdn.quilljs.com; " +
-                        "img-src 'self' data: blob:; " +
+                        "img-src 'self' data: blob: https://img.youtube.com; " +
                         "font-src 'self'; " +
-                        "frame-src 'self'")
+                        "frame-src 'self' https://www.youtube.com; " +
+                        "worker-src 'self' blob: https://cdnjs.cloudflare.com")
                 )
                 .frameOptions().sameOrigin()
             );
