@@ -34,6 +34,8 @@ public class PostRequest {
 
     private String description;
 
+    private String videoUrl;
+
     private String htmlContent;
 
     private List<PostImage> images = new ArrayList<>();

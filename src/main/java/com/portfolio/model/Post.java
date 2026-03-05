@@ -46,6 +46,9 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "video_url")
+    private String videoUrl;
+
     @Column(columnDefinition = "TEXT", name = "html_content")
     private String htmlContent;
 

@@ -47,6 +47,7 @@ public class PostService {
         post.setSize(request.getSize());
         post.setThumbnail(request.getThumbnail());
         post.setDescription(request.getDescription());
+        post.setVideoUrl(request.getVideoUrl());
         post.setHtmlContent(request.getHtmlContent());
         post.setImages(request.getImages());
         post.setDisplayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0);
@@ -85,6 +86,7 @@ public class PostService {
         post.setSize(request.getSize());
         post.setThumbnail(request.getThumbnail());
         post.setDescription(request.getDescription());
+        post.setVideoUrl(request.getVideoUrl());
         post.setHtmlContent(request.getHtmlContent());
         post.setImages(request.getImages());
         post.setDisplayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : post.getDisplayOrder());

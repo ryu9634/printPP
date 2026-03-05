@@ -21,11 +21,13 @@ public class FileStorageService {
     private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
 
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"
+            "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+            "application/pdf"
     );
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg",
+            ".pdf"
     );
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

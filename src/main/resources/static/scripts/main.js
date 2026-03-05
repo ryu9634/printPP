@@ -122,10 +122,31 @@ async function renderPage(page) {
                     <p>콘텐츠를 불러오는 데 실패했습니다.</p>
                     <button onclick="renderPage('${page}')" class="retry-btn">다시 시도</button>
                 </div>`;
+        } else if (page === 'cv') {
+            renderCvPage(contentDiv, posts);
         } else {
             renderPostsPage(contentDiv, posts);
         }
         requestAnimationFrame(() => { contentDiv.style.opacity = '1'; });
+    }
+}
+
+// CV 페이지 렌더링 (PDF 뷰어)
+function renderCvPage(container, posts) {
+    // 첫 번째 게시글의 썸네일이 PDF인지 확인
+    const pdfPost = posts.find(p => p.thumbnail && p.thumbnail.toLowerCase().endsWith('.pdf'));
+
+    if (pdfPost) {
+        container.innerHTML = `
+            <div class="cv-pdf-viewer">
+                <embed src="${API_BASE_URL}/files/${pdfPost.thumbnail}" type="application/pdf">
+            </div>
+        `;
+    } else if (posts.length > 0) {
+        // PDF가 없으면 일반 게시글로 표시
+        renderPostsPage(container, posts);
+    } else {
+        container.innerHTML = '<div class="empty-state"><p>CV가 등록되지 않았습니다</p></div>';
     }
 }
 
@@ -173,59 +194,183 @@ function showPostDetail(id, posts) {
     if (!post) return;
 
     const modal = createModal();
-    let contentHtml = '';
 
-    if (post.contentType === 'PHOTO') {
-        showPhotoSlideshow(modal, post);
-        return;
-    } else if (post.contentType === 'ARTICLE') {
-        let articleContent = '';
-        if (post.description) {
-            try {
-                const tempDiv = document.createElement('div');
-                tempDiv.style.display = 'none';
-                document.body.appendChild(tempDiv);
+    if (post.contentType === 'HTML') {
+        renderHtmlDetail(modal, post);
+    } else {
+        renderSplitDetail(modal, post);
+    }
+}
 
-                const tempQuill = new Quill(tempDiv, { readOnly: true });
-                const delta = JSON.parse(post.description);
-                tempQuill.setContents(delta);
-                articleContent = tempQuill.root.innerHTML;
+// YouTube URL에서 비디오 ID 추출
+function extractYouTubeId(url) {
+    if (!url) return null;
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /^([a-zA-Z0-9_-]{11})$/
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
 
-                document.body.removeChild(tempDiv);
-            } catch (e) {
-                console.error('Quill 데이터 파싱 실패:', e);
-                articleContent = `<p>${escapeHtml(post.description)}</p>`;
-            }
-        }
+// PHOTO/ARTICLE용 분할 레이아웃 렌더링
+function renderSplitDetail(modal, post) {
+    // 좌측 패널에 표시할 아이템 수집
+    const items = [];
 
-        contentHtml = `
-            <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                ${post.thumbnail ? `<img src="${API_BASE_URL}/files/${post.thumbnail}" alt="${escapeHtml(post.title)}" style="max-width: 100%; margin-bottom: 1rem;" loading="lazy">` : ''}
-                <h2>${escapeHtml(post.title)}</h2>
-                <p>${escapeHtml(post.year)}, ${escapeHtml(post.medium)}, ${escapeHtml(post.size)}</p>
-                <div class="article-content">
-                    ${articleContent}
-                </div>
-            </div>
-        `;
-    } else if (post.contentType === 'HTML') {
-        contentHtml = `
-            <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <div class="html-content">
-                    <iframe id="html-sandbox" sandbox="allow-same-origin"
-                        style="width:100%; border:none; min-height:400px;"></iframe>
-                </div>
-            </div>
-        `;
+    if (post.thumbnail) {
+        items.push({
+            type: 'image',
+            url: `${API_BASE_URL}/files/${post.thumbnail}`,
+            description: null
+        });
     }
 
-    modal.innerHTML = contentHtml;
+    if (post.images && post.images.length > 0) {
+        post.images.forEach(img => {
+            items.push({
+                type: 'image',
+                url: `${API_BASE_URL}/files/${img.imageUrl}`,
+                description: img.imageDescription
+            });
+        });
+    }
+
+    if (post.videoUrl) {
+        const videoId = extractYouTubeId(post.videoUrl);
+        if (videoId) {
+            items.push({
+                type: 'video',
+                videoId: videoId,
+                thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+            });
+        }
+    }
+
+    let selectedIndex = 0;
+
+    // 설명 렌더링
+    const descriptionHtml = renderDescription(post);
+
+    // 좌측 썸네일 스트립 HTML
+    const thumbsHtml = items.map((item, i) => `
+        <div class="thumb-item ${i === 0 ? 'active' : ''}" data-index="${i}">
+            ${item.type === 'video'
+                ? `<img src="${item.thumbnailUrl}" alt="Video"><div class="thumb-play-icon">&#9654;</div>`
+                : `<img src="${item.url}" alt="" loading="lazy">`
+            }
+        </div>
+    `).join('');
+
+    modal.innerHTML = `
+        <div class="detail-container">
+            <span class="close-modal">&times;</span>
+            <div class="detail-left">
+                <div class="thumb-strip">
+                    ${thumbsHtml}
+                </div>
+            </div>
+            <div class="detail-right">
+                <div class="detail-main-view"></div>
+                <div class="detail-info">
+                    <h2 class="detail-title">${escapeHtml(post.title)}</h2>
+                    <p class="detail-meta">${escapeHtml(post.year)}, ${escapeHtml(post.medium)}, ${escapeHtml(post.size)}</p>
+                    <div class="detail-description">
+                        ${descriptionHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
     document.body.appendChild(modal);
 
-    // HTML 타입이면 iframe에 콘텐츠 삽입 (XSS 방지)
-    if (post.contentType === 'HTML' && post.htmlContent) {
+    // 첫 아이템 렌더링
+    if (items.length > 0) {
+        renderMainView(modal, items, 0);
+    }
+
+    // 썸네일 클릭 핸들러
+    modal.querySelectorAll('.thumb-item').forEach(thumb => {
+        thumb.addEventListener('click', () => {
+            const index = parseInt(thumb.dataset.index);
+            selectedIndex = index;
+            renderMainView(modal, items, index);
+            modal.querySelectorAll('.thumb-item').forEach(t => t.classList.remove('active'));
+            thumb.classList.add('active');
+        });
+    });
+
+    // 메인 뷰 이미지 클릭 → 라이트박스
+    modal.querySelector('.detail-main-view').addEventListener('click', (e) => {
+        if (e.target.tagName === 'IMG' && e.target.classList.contains('main-view-image')) {
+            openLightbox(items, selectedIndex);
+        }
+    });
+
+    setupModalClose(modal);
+}
+
+// 우측 메인 뷰 업데이트
+function renderMainView(modal, items, index) {
+    const mainView = modal.querySelector('.detail-main-view');
+    const item = items[index];
+
+    if (item.type === 'video') {
+        mainView.innerHTML = `
+            <div class="main-video-wrapper">
+                <iframe src="https://www.youtube.com/embed/${item.videoId}?rel=0"
+                    frameborder="0" allowfullscreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+            </div>
+        `;
+    } else {
+        mainView.innerHTML = `
+            <img src="${item.url}" alt="" class="main-view-image" loading="lazy">
+            ${item.description ? `<p class="main-view-desc">${escapeHtml(item.description)}</p>` : ''}
+        `;
+    }
+}
+
+// 설명 렌더링 (ARTICLE: Quill, PHOTO: 일반 텍스트)
+function renderDescription(post) {
+    if (post.contentType === 'ARTICLE' && post.description) {
+        try {
+            const tempDiv = document.createElement('div');
+            tempDiv.style.display = 'none';
+            document.body.appendChild(tempDiv);
+            const tempQuill = new Quill(tempDiv, { readOnly: true });
+            const delta = JSON.parse(post.description);
+            tempQuill.setContents(delta);
+            const html = tempQuill.root.innerHTML;
+            document.body.removeChild(tempDiv);
+            return html;
+        } catch (e) {
+            console.error('Quill 데이터 파싱 실패:', e);
+            return `<p>${escapeHtml(post.description)}</p>`;
+        }
+    } else if (post.description) {
+        return `<p style="white-space: pre-wrap;">${escapeHtml(post.description)}</p>`;
+    }
+    return '';
+}
+
+// HTML 타입 전체 너비 렌더링
+function renderHtmlDetail(modal, post) {
+    modal.innerHTML = `
+        <div class="detail-container detail-html-fullwidth">
+            <span class="close-modal">&times;</span>
+            <div class="detail-html-content">
+                <iframe id="html-sandbox" sandbox="allow-same-origin"
+                    style="width:100%; border:none; min-height:80vh;"></iframe>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    if (post.htmlContent) {
         const iframe = modal.querySelector('#html-sandbox');
         if (iframe) {
             const doc = iframe.contentDocument;
@@ -240,6 +385,51 @@ function showPostDetail(id, posts) {
     }
 
     setupModalClose(modal);
+}
+
+// 이미지 라이트박스
+function openLightbox(items, startIndex) {
+    const imageItems = items.filter(item => item.type === 'image');
+    if (imageItems.length === 0) return;
+
+    const startItem = items[startIndex];
+    let currentIndex = imageItems.indexOf(startItem);
+    if (currentIndex === -1) currentIndex = 0;
+
+    const lightbox = document.createElement('div');
+    lightbox.className = 'lightbox-overlay';
+    lightbox.innerHTML = `
+        <span class="lightbox-close">&times;</span>
+        ${imageItems.length > 1 ? '<button class="lightbox-prev">&#10094;</button>' : ''}
+        <div class="lightbox-image-container">
+            <img src="${imageItems[currentIndex].url}" alt="">
+        </div>
+        ${imageItems.length > 1 ? '<button class="lightbox-next">&#10095;</button>' : ''}
+        ${imageItems.length > 1 ? `<div class="lightbox-counter">${currentIndex + 1} / ${imageItems.length}</div>` : ''}
+    `;
+    document.body.appendChild(lightbox);
+
+    function updateLightbox() {
+        lightbox.querySelector('.lightbox-image-container img').src = imageItems[currentIndex].url;
+        const counter = lightbox.querySelector('.lightbox-counter');
+        if (counter) counter.textContent = `${currentIndex + 1} / ${imageItems.length}`;
+    }
+
+    const prevBtn = lightbox.querySelector('.lightbox-prev');
+    const nextBtn = lightbox.querySelector('.lightbox-next');
+    if (prevBtn) prevBtn.onclick = (e) => { e.stopPropagation(); currentIndex = (currentIndex - 1 + imageItems.length) % imageItems.length; updateLightbox(); };
+    if (nextBtn) nextBtn.onclick = (e) => { e.stopPropagation(); currentIndex = (currentIndex + 1) % imageItems.length; updateLightbox(); };
+
+    lightbox.querySelector('.lightbox-close').onclick = () => { lightbox.remove(); document.removeEventListener('keydown', lbKeyHandler); };
+    lightbox.onclick = (e) => { if (e.target === lightbox) { lightbox.remove(); document.removeEventListener('keydown', lbKeyHandler); } };
+
+    const lbKeyHandler = (e) => {
+        if (e.key === 'Escape') { lightbox.remove(); document.removeEventListener('keydown', lbKeyHandler); }
+        if (e.key === 'ArrowLeft' && prevBtn) { currentIndex = (currentIndex - 1 + imageItems.length) % imageItems.length; updateLightbox(); }
+        if (e.key === 'ArrowRight' && nextBtn) { currentIndex = (currentIndex + 1) % imageItems.length; updateLightbox(); }
+        e.stopPropagation();
+    };
+    document.addEventListener('keydown', lbKeyHandler);
 }
 
 // HTML 이스케이프 함수
@@ -296,199 +486,6 @@ function setupModalClose(modal) {
         }
     };
     document.addEventListener('keydown', escHandler);
-}
-
-// 포토 슬라이드쇼 표시
-function showPhotoSlideshow(modal, post) {
-    const slides = [];
-
-    // 첫 번째 슬라이드: 썸네일 + 타이틀 + 설명
-    slides.push({
-        type: 'intro',
-        thumbnail: post.thumbnail,
-        title: post.title,
-        year: post.year,
-        medium: post.medium,
-        size: post.size,
-        description: post.description
-    });
-
-    // 추가 이미지 슬라이드
-    if (post.images && post.images.length > 0) {
-        post.images.forEach(img => {
-            slides.push({
-                type: 'image',
-                imageUrl: img.imageUrl,
-                imageDescription: img.imageDescription
-            });
-        });
-    }
-
-    let currentSlide = 0;
-
-    function renderSlide(index) {
-        const slide = slides[index];
-        const slideContainer = modal.querySelector('.slideshow-slide');
-        if (!slideContainer) return;
-
-        slideContainer.style.opacity = '0';
-        setTimeout(() => {
-            if (slide.type === 'intro') {
-                slideContainer.innerHTML = `
-                    <div class="slide-intro">
-                        ${slide.thumbnail
-                            ? `<div class="slide-intro-image"><img src="${API_BASE_URL}/files/${slide.thumbnail}" alt="${escapeHtml(slide.title)}" loading="lazy"></div>`
-                            : ''
-                        }
-                        <div class="slide-intro-info">
-                            <h2 class="slide-title">${escapeHtml(slide.title)}</h2>
-                            <p class="slide-meta">${escapeHtml(slide.year)}, ${escapeHtml(slide.medium)}, ${escapeHtml(slide.size)}</p>
-                            ${slide.description ? `<div class="slide-description">${escapeHtml(slide.description)}</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            } else {
-                slideContainer.innerHTML = `
-                    <div class="slide-image-view">
-                        <div class="slide-image-wrapper">
-                            <img src="${API_BASE_URL}/files/${slide.imageUrl}" alt="" loading="lazy">
-                        </div>
-                        ${slide.imageDescription ? `<p class="slide-image-desc">${escapeHtml(slide.imageDescription)}</p>` : ''}
-                    </div>
-                `;
-            }
-            slideContainer.style.opacity = '1';
-        }, 200);
-
-        // 도트 인디케이터 업데이트
-        modal.querySelectorAll('.slideshow-dot').forEach((dot, i) => {
-            dot.classList.toggle('active', i === index);
-        });
-
-        // 화살표 표시/숨김
-        const prevBtn = modal.querySelector('.slide-prev');
-        const nextBtn = modal.querySelector('.slide-next');
-        if (prevBtn) prevBtn.style.display = index === 0 ? 'none' : 'flex';
-        if (nextBtn) nextBtn.style.display = index === slides.length - 1 ? 'none' : 'flex';
-    }
-
-    function goToSlide(index) {
-        if (index < 0 || index >= slides.length) return;
-        currentSlide = index;
-        renderSlide(currentSlide);
-    }
-
-    // 슬라이드쇼 HTML 생성
-    const dotsHtml = slides.length > 1
-        ? `<div class="slideshow-dots">${slides.map((_, i) => `<span class="slideshow-dot${i === 0 ? ' active' : ''}" data-index="${i}"></span>`).join('')}</div>`
-        : '';
-
-    modal.innerHTML = `
-        <div class="slideshow-container">
-            <span class="close-modal">&times;</span>
-            ${slides.length > 1 ? '<button class="slide-prev" style="display:none;">&#10094;</button>' : ''}
-            <div class="slideshow-slide"></div>
-            ${slides.length > 1 ? '<button class="slide-next">&#10095;</button>' : ''}
-            ${dotsHtml}
-            ${slides.length > 1 ? `<div class="slide-counter"><span class="slide-current">1</span> / ${slides.length}</div>` : ''}
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    // 첫 슬라이드 렌더링
-    renderSlide(0);
-
-    // 네비게이션 이벤트
-    const prevBtn = modal.querySelector('.slide-prev');
-    const nextBtn = modal.querySelector('.slide-next');
-
-    if (prevBtn) {
-        prevBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            goToSlide(currentSlide - 1);
-            updateCounter();
-        });
-    }
-    if (nextBtn) {
-        nextBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            goToSlide(currentSlide + 1);
-            updateCounter();
-        });
-    }
-
-    // 도트 클릭
-    modal.querySelectorAll('.slideshow-dot').forEach(dot => {
-        dot.addEventListener('click', (e) => {
-            e.stopPropagation();
-            goToSlide(parseInt(dot.getAttribute('data-index')));
-            updateCounter();
-        });
-    });
-
-    function updateCounter() {
-        const counter = modal.querySelector('.slide-current');
-        if (counter) counter.textContent = currentSlide + 1;
-    }
-
-    // 키보드 네비게이션
-    const keyHandler = (e) => {
-        if (e.key === 'ArrowLeft') {
-            goToSlide(currentSlide - 1);
-            updateCounter();
-        } else if (e.key === 'ArrowRight') {
-            goToSlide(currentSlide + 1);
-            updateCounter();
-        } else if (e.key === 'Escape') {
-            modal.remove();
-            document.removeEventListener('keydown', keyHandler);
-        }
-    };
-    document.addEventListener('keydown', keyHandler);
-
-    // 터치 스와이프
-    let touchStartX = 0;
-    let touchEndX = 0;
-    modal.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-    modal.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) {
-                goToSlide(currentSlide + 1);
-            } else {
-                goToSlide(currentSlide - 1);
-            }
-            updateCounter();
-        }
-    }, { passive: true });
-
-    // 닫기 이벤트
-    const closeBtn = modal.querySelector('.close-modal');
-    closeBtn.style.cssText = `
-        color: #fff;
-        position: fixed;
-        top: 1rem;
-        right: 1.5rem;
-        font-size: 36px;
-        font-weight: bold;
-        cursor: pointer;
-        z-index: 1002;
-        padding: 10px;
-        line-height: 1;
-    `;
-    closeBtn.onclick = () => {
-        modal.remove();
-        document.removeEventListener('keydown', keyHandler);
-    };
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal || e.target.classList.contains('slideshow-container')) {
-            modal.remove();
-            document.removeEventListener('keydown', keyHandler);
-        }
-    });
 }
 
 // Back-to-top 버튼

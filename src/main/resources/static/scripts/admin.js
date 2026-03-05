@@ -315,6 +315,7 @@ function closeModal(modalId) {
     } else if (modalId === 'post-modal') {
         document.getElementById('post-form').reset();
         document.getElementById('additional-images').innerHTML = '';
+        document.getElementById('post-video-url').value = '';
         clearThumbnailPreview();
 
         if (adminState.quillEditor) {
@@ -436,6 +437,7 @@ function handleContentTypeChange() {
 
     document.getElementById('thumbnail-group').style.display = 'none';
     document.getElementById('photo-description-group').style.display = 'none';
+    document.getElementById('video-url-group').style.display = 'none';
     document.getElementById('article-editor-group').style.display = 'none';
     document.getElementById('html-editor-group').style.display = 'none';
     document.getElementById('additional-images-group').style.display = 'none';
@@ -443,10 +445,12 @@ function handleContentTypeChange() {
     if (contentType === 'PHOTO') {
         document.getElementById('thumbnail-group').style.display = 'block';
         document.getElementById('photo-description-group').style.display = 'block';
+        document.getElementById('video-url-group').style.display = 'block';
         document.getElementById('additional-images-group').style.display = 'block';
     } else if (contentType === 'ARTICLE') {
         document.getElementById('thumbnail-group').style.display = 'block';
         document.getElementById('article-editor-group').style.display = 'block';
+        document.getElementById('video-url-group').style.display = 'block';
     } else if (contentType === 'HTML') {
         document.getElementById('html-editor-group').style.display = 'block';
     }
@@ -487,6 +491,7 @@ async function editPost(postId) {
         document.getElementById('post-medium').value = post.medium;
         document.getElementById('post-size').value = post.size;
         document.getElementById('post-thumbnail').value = post.thumbnail || '';
+        document.getElementById('post-video-url').value = post.videoUrl || '';
 
         handleContentTypeChange();
 
@@ -581,7 +586,7 @@ function setupThumbnailUpload() {
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = 'image/*';
+    fileInput.accept = 'image/*,.pdf';
     fileInput.style.display = 'none';
     fileInput.id = 'thumbnail-file';
 
@@ -589,7 +594,7 @@ function setupThumbnailUpload() {
     const dropZone = document.createElement('div');
     dropZone.className = 'drop-zone';
     dropZone.id = 'thumbnail-drop-zone';
-    dropZone.innerHTML = '<div class="drop-icon">📁</div><p>이미지를 드래그하거나 클릭하여 선택</p>';
+    dropZone.innerHTML = '<div class="drop-icon">📁</div><p>이미지/PDF를 드래그하거나 클릭하여 선택</p>';
     dropZone.onclick = () => fileInput.click();
 
     // 드래그 이벤트
@@ -604,10 +609,10 @@ function setupThumbnailUpload() {
         e.preventDefault();
         dropZone.classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
+        if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
             await handleThumbnailFile(file, dropZone);
         } else {
-            showToast('이미지 파일만 업로드 가능합니다.', 'warning');
+            showToast('이미지 또는 PDF 파일만 업로드 가능합니다.', 'warning');
         }
     });
 
@@ -772,6 +777,7 @@ async function handleSavePost(event) {
     if (contentType === 'PHOTO') {
         postData.thumbnail = document.getElementById('post-thumbnail').value;
         postData.description = document.getElementById('post-description-text').value;
+        postData.videoUrl = document.getElementById('post-video-url').value;
         postData.images = Array.from(document.querySelectorAll('.image-entry'))
             .map(entry => ({
                 imageUrl: entry.querySelector('.additional-image-url').value,
@@ -780,6 +786,7 @@ async function handleSavePost(event) {
             .filter(img => img.imageUrl.trim() !== '');
     } else if (contentType === 'ARTICLE') {
         postData.thumbnail = document.getElementById('post-thumbnail').value;
+        postData.videoUrl = document.getElementById('post-video-url').value;
         const delta = adminState.quillEditor.getContents();
         postData.description = JSON.stringify(delta);
     } else if (contentType === 'HTML') {
