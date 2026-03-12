@@ -10,11 +10,94 @@ const appState = {
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadSiteSettings();
     await loadCategories();
     setupNavigation();
     renderPage('main');
     setupBackToTop();
 });
+
+// 사이트 설정 로드 및 적용
+async function loadSiteSettings() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings`);
+        if (!response.ok) return;
+        const s = await response.json();
+        applySiteSettings(s);
+    } catch (error) {
+        console.error('사이트 설정 로드 실패:', error);
+    }
+}
+
+function applySiteSettings(s) {
+    const root = document.documentElement;
+
+    // 색상
+    if (s.backgroundColor) root.style.setProperty('--bg-color', s.backgroundColor);
+    if (s.textColor) root.style.setProperty('--text-color', s.textColor);
+    if (s.sidebarBgColor) root.style.setProperty('--sidebar-bg', s.sidebarBgColor);
+    if (s.sidebarTextColor) root.style.setProperty('--sidebar-text', s.sidebarTextColor);
+    if (s.sidebarActiveColor) root.style.setProperty('--sidebar-active', s.sidebarActiveColor);
+
+    // 배경 이미지
+    if (s.backgroundImage) {
+        const appEl = document.querySelector('.app');
+        if (appEl) {
+            appEl.style.backgroundImage = `url(${API_BASE_URL}/files/${s.backgroundImage})`;
+            appEl.style.backgroundSize = s.backgroundSize || 'cover';
+            appEl.style.backgroundRepeat = s.backgroundRepeat || 'no-repeat';
+            appEl.style.backgroundAttachment = s.backgroundAttachment || 'fixed';
+            appEl.style.backgroundPosition = s.backgroundPosition || 'center center';
+        }
+    }
+
+    // 브라우저 탭 제목
+    if (s.siteSubtitle) {
+        document.title = s.siteSubtitle;
+    }
+
+    // 파비콘
+    if (s.favicon) {
+        let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = `${API_BASE_URL}/files/${s.favicon}`;
+        document.head.appendChild(link);
+    }
+
+    // Google Fonts
+    [s.titleFontUrl, s.bodyFontUrl].forEach(url => {
+        if (url && url.startsWith('https://fonts.googleapis.com')) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = url;
+            document.head.appendChild(link);
+        }
+    });
+
+    // 폰트
+    if (s.titleFontFamily) root.style.setProperty('--title-font', s.titleFontFamily);
+    if (s.bodyFontFamily) root.style.setProperty('--body-font', s.bodyFontFamily);
+
+    // 사이트 정보 저장
+    if (s.siteTitle) appState.siteTitle = s.siteTitle;
+    if (s.logoImage) appState.logoImage = s.logoImage;
+    // 푸터
+    if (s.footerText) {
+        appState.footerText = s.footerText;
+        const footer = document.getElementById('site-footer');
+        if (footer) {
+            footer.textContent = s.footerText;
+            footer.style.display = 'block';
+        }
+    }
+    appState.contactInfo = {
+        name: s.contactName,
+        phone: s.contactPhone,
+        email: s.socialEmail,
+        instagram: s.socialInstagram
+    };
+}
 
 // 카테고리 로드
 async function loadCategories() {
@@ -53,12 +136,29 @@ function renderSidebar() {
     const navMenu = document.querySelector('.nav-menu');
     navMenu.innerHTML = '';
 
+    // 기존 연락처 정보 제거
+    const oldContact = document.querySelector('.sidebar-contact');
+    if (oldContact) oldContact.remove();
+
     const mainCategory = appState.categories.find(cat => cat.id === 'main');
     if (mainCategory) {
         const li = document.createElement('li');
-        li.textContent = 'Jae Hoon Jeoung';
         li.setAttribute('data-page', 'main');
         li.style.cursor = 'pointer';
+
+        // 로고 이미지
+        if (appState.logoImage) {
+            const logo = document.createElement('img');
+            logo.src = `${API_BASE_URL}/files/${appState.logoImage}`;
+            logo.alt = 'Logo';
+            logo.style.cssText = 'max-width: 100%; max-height: 60px; margin-bottom: 8px; display: block;';
+            li.appendChild(logo);
+        }
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = appState.siteTitle || 'Jae Hoon Jeoung';
+        li.appendChild(titleSpan);
+
         if (appState.currentPage === 'main') {
             li.classList.add('active');
         }
@@ -79,14 +179,57 @@ function renderSidebar() {
             navMenu.appendChild(li);
         }
     });
+
+    // 연락처 정보
+    if (appState.contactInfo) {
+        const info = appState.contactInfo;
+        const hasInfo = info.name || info.phone || info.email || info.instagram;
+        if (hasInfo) {
+            const contactDiv = document.createElement('div');
+            contactDiv.className = 'sidebar-contact';
+
+            if (info.name) {
+                const nameEl = document.createElement('p');
+                nameEl.className = 'contact-name';
+                nameEl.textContent = info.name;
+                contactDiv.appendChild(nameEl);
+            }
+
+            if (info.phone) {
+                const phoneEl = document.createElement('p');
+                phoneEl.className = 'contact-item';
+                phoneEl.textContent = info.phone;
+                contactDiv.appendChild(phoneEl);
+            }
+
+            if (info.email) {
+                const emailEl = document.createElement('p');
+                emailEl.className = 'contact-item';
+                emailEl.textContent = info.email;
+                contactDiv.appendChild(emailEl);
+            }
+
+            if (info.instagram) {
+                const igLink = document.createElement('a');
+                igLink.href = info.instagram;
+                igLink.target = '_blank';
+                igLink.rel = 'noopener noreferrer';
+                igLink.className = 'contact-instagram';
+                igLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>';
+                contactDiv.appendChild(igLink);
+            }
+
+            navMenu.parentElement.appendChild(contactDiv);
+        }
+    }
 }
 
 // 네비게이션 설정
 function setupNavigation() {
     document.querySelector('.nav-menu').addEventListener('click', (e) => {
-        if (e.target.tagName === 'LI') {
-            const page = e.target.getAttribute('data-page');
-            renderPage(page);
+        const li = e.target.closest('li[data-page]');
+        if (li) {
+            renderPage(li.getAttribute('data-page'));
         }
     });
 }

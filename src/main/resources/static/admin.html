@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 페이지 - Portfolio Admin</title>
-    <link rel="stylesheet" href="styles/admin.css?v=4">
+    <link rel="stylesheet" href="styles/admin.css?v=5">
 
     <!-- Quill.js CDN -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -24,6 +24,7 @@
                 <nav class="admin-nav">
                     <button class="nav-btn active" data-section="categories">카테고리 관리</button>
                     <button class="nav-btn" data-section="posts">게시글 관리</button>
+                    <button class="nav-btn" data-section="settings">사이트 설정</button>
                 </nav>
             </aside>
 
@@ -68,6 +69,201 @@
                     <div class="posts-list">
                         <div id="posts-grid" class="posts-grid">
                             <!-- 게시글 목록이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 사이트 설정 섹션 -->
+                <section id="settings-section" class="admin-section">
+                    <div class="section-header">
+                        <h2>사이트 설정</h2>
+                        <button class="btn btn-primary" onclick="handleSaveSettings()">설정 저장</button>
+                    </div>
+
+                    <div class="settings-container">
+                        <!-- 사이트 정보 -->
+                        <div class="settings-group">
+                            <h3 class="settings-group-title">사이트 정보</h3>
+                            <small class="settings-group-desc">
+                                사이드바 상단에 표시되는 이름과 로고, 브라우저 탭 제목과 파비콘을 설정합니다.
+                            </small>
+                            <div class="form-group">
+                                <label for="setting-site-title">사이트 제목</label>
+                                <input type="text" id="setting-site-title" placeholder="Jae Hoon Jeoung">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-site-subtitle">브라우저 탭 제목</label>
+                                <input type="text" id="setting-site-subtitle" placeholder="Artist Portfolio">
+                                <small>브라우저 탭에 표시되는 제목입니다</small>
+                            </div>
+                            <div class="form-group">
+                                <label>파비콘</label>
+                                <input type="hidden" id="setting-favicon">
+                                <div class="settings-drop-zone" id="favicon-drop-zone">
+                                    <p>파비콘 이미지를 드래그하거나 클릭하여 선택</p>
+                                </div>
+                                <div id="favicon-preview" class="settings-image-preview"></div>
+                                <small>브라우저 탭에 표시되는 아이콘입니다 (정사각형 이미지 권장)</small>
+                            </div>
+                            <div class="form-group">
+                                <label>로고 이미지</label>
+                                <input type="hidden" id="setting-logo-image">
+                                <div class="settings-drop-zone" id="logo-drop-zone">
+                                    <p>로고 이미지를 드래그하거나 클릭하여 선택</p>
+                                </div>
+                                <div id="logo-preview" class="settings-image-preview"></div>
+                            </div>
+                        </div>
+
+                        <!-- 배경 설정 -->
+                        <div class="settings-group">
+                            <h3 class="settings-group-title">배경 설정</h3>
+                            <small class="settings-group-desc">
+                                사이트 전체 배경 색상과 이미지를 설정합니다. 배경 이미지를 업로드하면 색상 위에 덮어씌워집니다. 이미지 크기/반복/스크롤 옵션으로 표시 방식을 조절할 수 있습니다.
+                            </small>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="setting-bg-color">배경 색상</label>
+                                    <div class="color-picker-row">
+                                        <input type="color" id="setting-bg-color" value="#0a0a0a" class="color-input">
+                                        <input type="text" id="setting-bg-color-text" value="#0a0a0a" class="color-text-input" placeholder="#0a0a0a">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-text-color">텍스트 색상</label>
+                                    <div class="color-picker-row">
+                                        <input type="color" id="setting-text-color" value="#ffffff" class="color-input">
+                                        <input type="text" id="setting-text-color-text" value="#ffffff" class="color-text-input">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>배경 이미지</label>
+                                <input type="hidden" id="setting-bg-image">
+                                <div class="settings-drop-zone" id="bg-image-drop-zone">
+                                    <p>배경 이미지를 드래그하거나 클릭하여 선택</p>
+                                </div>
+                                <div id="bg-image-preview" class="settings-image-preview"></div>
+                            </div>
+                            <div class="form-row-3">
+                                <div class="form-group">
+                                    <label for="setting-bg-size">크기</label>
+                                    <select id="setting-bg-size">
+                                        <option value="cover">Cover (채우기)</option>
+                                        <option value="contain">Contain (맞추기)</option>
+                                        <option value="auto">Auto (원본)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bg-repeat">반복</label>
+                                    <select id="setting-bg-repeat">
+                                        <option value="no-repeat">반복 없음</option>
+                                        <option value="repeat">반복</option>
+                                        <option value="repeat-x">가로 반복</option>
+                                        <option value="repeat-y">세로 반복</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bg-attachment">스크롤</label>
+                                    <select id="setting-bg-attachment">
+                                        <option value="fixed">고정 (Parallax)</option>
+                                        <option value="scroll">스크롤</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 사이드바 색상 -->
+                        <div class="settings-group">
+                            <h3 class="settings-group-title">사이드바 색상</h3>
+                            <small class="settings-group-desc">
+                                왼쪽 메뉴 영역의 색상을 설정합니다. 배경색은 사이드바 전체, 텍스트색은 비활성 메뉴, 활성 항목은 현재 선택된 메뉴의 색상입니다.
+                            </small>
+                            <div class="form-row-3">
+                                <div class="form-group">
+                                    <label for="setting-sidebar-bg">배경색</label>
+                                    <div class="color-picker-row">
+                                        <input type="color" id="setting-sidebar-bg" value="#0a0a0a" class="color-input">
+                                        <input type="text" id="setting-sidebar-bg-text" value="#0a0a0a" class="color-text-input">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-sidebar-text">텍스트색</label>
+                                    <div class="color-picker-row">
+                                        <input type="color" id="setting-sidebar-text" value="#535353" class="color-input">
+                                        <input type="text" id="setting-sidebar-text-text" value="#535353" class="color-text-input">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-sidebar-active">활성 항목</label>
+                                    <div class="color-picker-row">
+                                        <input type="color" id="setting-sidebar-active" value="#ffffff" class="color-input">
+                                        <input type="text" id="setting-sidebar-active-text" value="#ffffff" class="color-text-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 폰트 설정 -->
+                        <div class="settings-group">
+                            <h3 class="settings-group-title">폰트 설정</h3>
+                            <small class="settings-group-desc">
+                                <a href="https://fonts.google.com" target="_blank">Google Fonts</a>에서 원하는 폰트를 선택 &rarr; "Get embed code" 클릭 &rarr; "@import" 탭의 URL을 복사하여 "폰트 URL"에 붙여넣고, font-family 이름을 입력하세요.<br>
+                                예시) URL: <code>https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap</code><br>
+                                font-family: <code>'Playfair Display', serif</code>
+                            </small>
+                            <div class="form-group">
+                                <label for="setting-title-font-url">제목 폰트 URL</label>
+                                <input type="text" id="setting-title-font-url" placeholder="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-title-font-family">제목 font-family</label>
+                                <input type="text" id="setting-title-font-family" placeholder="'Playfair Display', serif">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-body-font-url">본문 폰트 URL</label>
+                                <input type="text" id="setting-body-font-url" placeholder="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-body-font-family">본문 font-family</label>
+                                <input type="text" id="setting-body-font-family" placeholder="'Noto Sans KR', sans-serif">
+                            </div>
+                        </div>
+
+                        <!-- 연락처 정보 -->
+                        <div class="settings-group">
+                            <h3 class="settings-group-title">연락처 정보</h3>
+                            <small class="settings-group-desc">
+                                사이드바 하단에 이름, 전화번호, 이메일, Instagram 순서로 표시됩니다. 비워두면 해당 항목은 표시되지 않습니다.
+                            </small>
+                            <div class="form-group">
+                                <label for="setting-contact-name">이름</label>
+                                <input type="text" id="setting-contact-name" placeholder="홍길동">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-contact-phone">전화번호</label>
+                                <input type="text" id="setting-contact-phone" placeholder="010-1234-5678">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-social-email">이메일</label>
+                                <input type="text" id="setting-social-email" placeholder="artist@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-social-instagram">Instagram URL</label>
+                                <input type="text" id="setting-social-instagram" placeholder="https://instagram.com/username">
+                            </div>
+                        </div>
+
+                        <!-- 푸터 -->
+                        <div class="settings-group">
+                            <h3 class="settings-group-title">푸터</h3>
+                            <small class="settings-group-desc">
+                                페이지 하단에 표시되는 저작권 문구입니다.
+                            </small>
+                            <div class="form-group">
+                                <label for="setting-footer-text">푸터 텍스트</label>
+                                <input type="text" id="setting-footer-text" placeholder="© 2024 Jae Hoon Jeoung. All rights reserved.">
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -233,6 +429,6 @@
         </div>
     </div>
 
-    <script src="scripts/admin.js?v=4"></script>
+    <script src="scripts/admin.js?v=5"></script>
 </body>
 </html>

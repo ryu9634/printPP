@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCvPdfUpload();
     initializeQuillEditor();
     setupFormChangeTracking();
+    initializeSettingsUI();
 });
 
 // 폼 변경사항 추적 설정
@@ -164,6 +165,8 @@ function switchSection(sectionName) {
         renderCategoriesTable();
     } else if (sectionName === 'posts') {
         renderPostsGrid();
+    } else if (sectionName === 'settings') {
+        loadSettings();
     }
 }
 
@@ -1196,3 +1199,231 @@ window.onclick = function(event) {
         event.target.classList.remove('show');
     }
 };
+
+// ============================
+// 사이트 설정 관리
+// ============================
+
+// 설정 UI 초기화
+function initializeSettingsUI() {
+    setupSettingsImageUpload('bg-image-drop-zone', 'setting-bg-image', 'bg-image-preview');
+    setupSettingsImageUpload('logo-drop-zone', 'setting-logo-image', 'logo-preview');
+    setupSettingsImageUpload('favicon-drop-zone', 'setting-favicon', 'favicon-preview');
+
+    // 컬러 피커 동기화 설정
+    ['setting-bg-color', 'setting-text-color', 'setting-sidebar-bg',
+     'setting-sidebar-text', 'setting-sidebar-active'].forEach(setupColorSync);
+}
+
+// 컬러 피커 ↔ 텍스트 입력 동기화
+function setupColorSync(id) {
+    const colorInput = document.getElementById(id);
+    const textInput = document.getElementById(id + '-text');
+    if (!colorInput || !textInput) return;
+
+    colorInput.addEventListener('input', () => {
+        textInput.value = colorInput.value;
+    });
+
+    textInput.addEventListener('input', () => {
+        const val = textInput.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+            colorInput.value = val;
+        }
+    });
+}
+
+// 설정 이미지 업로드 설정
+function setupSettingsImageUpload(dropZoneId, hiddenInputId, previewId) {
+    const dropZone = document.getElementById(dropZoneId);
+    if (!dropZone) return;
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    dropZone.parentElement.appendChild(fileInput);
+
+    dropZone.onclick = () => fileInput.click();
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            await handleSettingsImageUpload(file, dropZoneId, hiddenInputId, previewId);
+        } else {
+            showToast('이미지 파일만 업로드 가능합니다.', 'warning');
+        }
+    });
+
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            await handleSettingsImageUpload(file, dropZoneId, hiddenInputId, previewId);
+        }
+    };
+}
+
+async function handleSettingsImageUpload(file, dropZoneId, hiddenInputId, previewId) {
+    const dropZone = document.getElementById(dropZoneId);
+    const originalHtml = dropZone.innerHTML;
+    dropZone.innerHTML = '<p>업로드 중...</p>';
+
+    try {
+        const fileName = await uploadImage(file);
+        document.getElementById(hiddenInputId).value = fileName;
+        showSettingsImagePreview(previewId, dropZoneId, `${API_BASE_URL}/files/${fileName}`, hiddenInputId);
+        showToast('이미지가 업로드되었습니다.', 'success');
+    } catch (error) {
+        dropZone.innerHTML = originalHtml;
+        showToast('이미지 업로드에 실패했습니다.', 'error');
+    }
+}
+
+function showSettingsImagePreview(previewId, dropZoneId, imageUrl, hiddenInputId) {
+    const preview = document.getElementById(previewId);
+    const dropZone = document.getElementById(dropZoneId);
+
+    dropZone.style.display = 'none';
+    preview.innerHTML = `
+        <img src="${imageUrl}" alt="preview">
+        <span class="remove-btn" onclick="removeSettingsImage('${previewId}', '${dropZoneId}', '${hiddenInputId}')">삭제</span>
+    `;
+}
+
+function removeSettingsImage(previewId, dropZoneId, hiddenInputId) {
+    const preview = document.getElementById(previewId);
+    const dropZone = document.getElementById(dropZoneId);
+
+    preview.innerHTML = '';
+    dropZone.style.display = '';
+    dropZone.innerHTML = '<p>이미지를 드래그하거나 클릭하여 선택</p>';
+    document.getElementById(hiddenInputId).value = '';
+}
+
+// 설정 로드
+async function loadSettings() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings`);
+        if (!response.ok) return;
+        const s = await response.json();
+
+        // 사이트 정보
+        document.getElementById('setting-site-title').value = s.siteTitle || '';
+        document.getElementById('setting-site-subtitle').value = s.siteSubtitle || '';
+
+        // 로고
+        if (s.logoImage) {
+            document.getElementById('setting-logo-image').value = s.logoImage;
+            showSettingsImagePreview('logo-preview', 'logo-drop-zone',
+                `${API_BASE_URL}/files/${s.logoImage}`, 'setting-logo-image');
+        }
+
+        // 배경
+        setColorValue('setting-bg-color', s.backgroundColor || '#0a0a0a');
+        setColorValue('setting-text-color', s.textColor || '#ffffff');
+
+        if (s.backgroundImage) {
+            document.getElementById('setting-bg-image').value = s.backgroundImage;
+            showSettingsImagePreview('bg-image-preview', 'bg-image-drop-zone',
+                `${API_BASE_URL}/files/${s.backgroundImage}`, 'setting-bg-image');
+        }
+
+        document.getElementById('setting-bg-size').value = s.backgroundSize || 'cover';
+        document.getElementById('setting-bg-repeat').value = s.backgroundRepeat || 'no-repeat';
+        document.getElementById('setting-bg-attachment').value = s.backgroundAttachment || 'fixed';
+
+        // 사이드바 색상
+        setColorValue('setting-sidebar-bg', s.sidebarBgColor || '#0a0a0a');
+        setColorValue('setting-sidebar-text', s.sidebarTextColor || '#535353');
+        setColorValue('setting-sidebar-active', s.sidebarActiveColor || '#ffffff');
+
+        // 폰트
+        document.getElementById('setting-title-font-url').value = s.titleFontUrl || '';
+        document.getElementById('setting-title-font-family').value = s.titleFontFamily || '';
+        document.getElementById('setting-body-font-url').value = s.bodyFontUrl || '';
+        document.getElementById('setting-body-font-family').value = s.bodyFontFamily || '';
+
+        // 파비콘
+        if (s.favicon) {
+            document.getElementById('setting-favicon').value = s.favicon;
+            showSettingsImagePreview('favicon-preview', 'favicon-drop-zone',
+                `${API_BASE_URL}/files/${s.favicon}`, 'setting-favicon');
+        }
+
+        // 연락처
+        document.getElementById('setting-contact-name').value = s.contactName || '';
+        document.getElementById('setting-contact-phone').value = s.contactPhone || '';
+        document.getElementById('setting-social-email').value = s.socialEmail || '';
+        document.getElementById('setting-social-instagram').value = s.socialInstagram || '';
+
+        // 푸터
+        document.getElementById('setting-footer-text').value = s.footerText || '';
+
+    } catch (error) {
+        console.error('설정 로드 실패:', error);
+        showToast('설정을 불러오는데 실패했습니다.', 'error');
+    }
+}
+
+function setColorValue(id, value) {
+    const colorInput = document.getElementById(id);
+    const textInput = document.getElementById(id + '-text');
+    if (colorInput) colorInput.value = value;
+    if (textInput) textInput.value = value;
+}
+
+// 설정 저장
+async function handleSaveSettings() {
+    const settingsData = {
+        siteTitle: document.getElementById('setting-site-title').value || null,
+        siteSubtitle: document.getElementById('setting-site-subtitle').value || null,
+        backgroundColor: document.getElementById('setting-bg-color').value,
+        backgroundImage: document.getElementById('setting-bg-image').value || null,
+        backgroundSize: document.getElementById('setting-bg-size').value,
+        backgroundRepeat: document.getElementById('setting-bg-repeat').value,
+        backgroundAttachment: document.getElementById('setting-bg-attachment').value,
+        backgroundPosition: 'center center',
+        textColor: document.getElementById('setting-text-color').value,
+        sidebarBgColor: document.getElementById('setting-sidebar-bg').value,
+        sidebarTextColor: document.getElementById('setting-sidebar-text').value,
+        sidebarActiveColor: document.getElementById('setting-sidebar-active').value,
+        titleFontUrl: document.getElementById('setting-title-font-url').value || null,
+        titleFontFamily: document.getElementById('setting-title-font-family').value || null,
+        bodyFontUrl: document.getElementById('setting-body-font-url').value || null,
+        bodyFontFamily: document.getElementById('setting-body-font-family').value || null,
+        favicon: document.getElementById('setting-favicon').value || null,
+        logoImage: document.getElementById('setting-logo-image').value || null,
+        contactName: document.getElementById('setting-contact-name').value || null,
+        contactPhone: document.getElementById('setting-contact-phone').value || null,
+        socialInstagram: document.getElementById('setting-social-instagram').value || null,
+        socialEmail: document.getElementById('setting-social-email').value || null,
+        footerText: document.getElementById('setting-footer-text').value || null
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(settingsData)
+        });
+
+        if (response.ok) {
+            showToast('설정이 저장되었습니다.', 'success');
+        } else {
+            showToast('설정 저장에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('설정 저장 실패:', error);
+        showToast('설정 저장 중 오류가 발생했습니다.', 'error');
+    }
+}

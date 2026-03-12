@@ -56,8 +56,10 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.GET, "/api/posts/*").permitAll()
                 .antMatchers(HttpMethod.GET, "/api/posts/category/*").permitAll()
                 .antMatchers(HttpMethod.GET, "/api/files/*").permitAll()
+                .antMatchers(HttpMethod.GET, "/api/settings").permitAll()
 
                 .antMatchers("/admin.html").hasRole("ADMIN")
+                .antMatchers(HttpMethod.POST, "/api/settings").hasRole("ADMIN")
                 .antMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
                 .antMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
                 .antMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
@@ -83,17 +85,15 @@ public class SecurityConfig {
                 .deleteCookies("JSESSIONID")
             )
 
-            .csrf(csrf -> csrf
-                .ignoringAntMatchers("/api/**")
-            )
+            .csrf().disable()
 
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp
                     .policyDirectives("default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline' https://cdn.quilljs.com https://cdnjs.cloudflare.com; " +
-                        "style-src 'self' 'unsafe-inline' https://cdn.quilljs.com; " +
+                        "script-src 'self' 'unsafe-inline' https://cdn.quilljs.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
+                        "style-src 'self' 'unsafe-inline' https://cdn.quilljs.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
                         "img-src 'self' data: blob: https://img.youtube.com; " +
-                        "font-src 'self'; " +
+                        "font-src 'self' https://fonts.gstatic.com; " +
                         "frame-src 'self' https://www.youtube.com; " +
                         "worker-src 'self' blob: https://cdnjs.cloudflare.com")
                 )
